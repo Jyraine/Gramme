@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#D23A05">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gramme">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Gramme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Gramme : identité sportive. Chiffres de poids très grands en capitales étroites,
+   orange haute visibilité comme seul accent, trait oblique (la « slash ») répété sur titres et repères. */
+:root{
+  --paper:#E9EEF2; --card:#FFFFFF; --ink:#0E1A24; --mute:#52606C; --line:#CFD8DF;
+  --sig:#0B7380; --acc:#D23A05; --on-acc:#FFFFFF;
+  --ok:#1F7A45; --warn:#A85A00; --shade:rgba(10,20,28,.55);
+  --c0:#3B5BA9; --c1:#7B4FA3; --c2:#8A6A3C; --c3:#D9A21B; --c4:#3E9A52;
+  --c5:#C0407A; --c6:#2E8B7A; --c7:#2A9DC4; --c8:#86A62B; --c9:#6F7F8C;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --body:'Barlow',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0A1218; --card:#131F29; --ink:#ECF2F6; --mute:#9AAAB6; --line:#26363F;
+    --sig:#4FD1D9; --acc:#FF6A2B; --on-acc:#1A0A02;
+    --ok:#6CCB92; --warn:#F0A94A; --shade:rgba(0,0,0,.7);
+    --c0:#7C98DA; --c1:#B08ADB; --c2:#C9A068; --c3:#F2C14E; --c4:#6FCB86;
+    --c5:#E57AA9; --c6:#5CC4B0; --c7:#66C3E8; --c8:#B7D45A; --c9:#A3B0BA;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0A1218; --card:#131F29; --ink:#ECF2F6; --mute:#9AAAB6; --line:#26363F;
+  --sig:#4FD1D9; --acc:#FF6A2B; --on-acc:#1A0A02;
+  --ok:#6CCB92; --warn:#F0A94A; --shade:rgba(0,0,0,.7);
+  --c0:#7C98DA; --c1:#B08ADB; --c2:#C9A068; --c3:#F2C14E; --c4:#6FCB86;
+  --c5:#E57AA9; --c6:#5CC4B0; --c7:#66C3E8; --c8:#B7D45A; --c9:#A3B0BA;
+  color-scheme:dark;
+}
+[hidden]{display:none !important}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:500 16px/1.45 var(--body);padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+body.lock{overflow:hidden}
+h1,h2,h3{margin:0;font-family:var(--display);font-weight:800;text-transform:uppercase;text-wrap:balance}
+h1{font-size:44px;line-height:.95;letter-spacing:.005em;font-weight:900}
+h2{font-size:26px;line-height:1;letter-spacing:.02em}
+h3{font-size:20px;line-height:1.05;letter-spacing:.02em}
+p{margin:0}
+a{color:inherit}
+button{font:inherit;color:inherit}
+.shell{max-width:720px;margin:0 auto;padding:0 16px}
+.top{display:flex;align-items:center;gap:10px;padding:calc(14px + env(safe-area-inset-top)) 0 8px}
+.logo{flex:none;width:40px;height:40px;display:block}
+.top .btn{margin-left:auto}
+.auth{max-width:420px;margin:28px auto 0}
+.auth h1{margin-bottom:10px}
+.brand{font:900 32px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.tag{color:var(--mute);font-size:13px;font-weight:600}
+.slash{display:inline-block;flex:none;width:7px;height:24px;background:var(--acc);transform:skewX(-16deg);border-radius:1px}
+.nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:20}
+.nav a{flex:1;text-align:center;text-decoration:none;padding:15px 0 13px;font:800 19px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.nav a[aria-current="page"]{color:var(--ink);box-shadow:inset 0 4px 0 var(--acc)}
+.head h1::before{content:'';display:inline-block;width:9px;height:.8em;margin-right:12px;background:var(--acc);transform:skewX(-16deg);vertical-align:-.04em}
+.head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 14px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:9px 16px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);font-weight:600;font-size:15px;cursor:pointer;text-decoration:none}
+.btn:hover{border-color:var(--mute)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.btn.sm{min-height:36px;padding:5px 11px;font-size:14px}
+.btn.ghost{background:transparent}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.danger{color:var(--acc);border-color:var(--acc);background:transparent}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+input,select,textarea{font:inherit;color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 12px;min-height:44px;width:100%}
+textarea{min-height:84px;resize:vertical}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--mute)}
+label.f input,label.f select,label.f textarea{font-weight:400;color:var(--ink);font-size:16px}
+.form{display:flex;flex-direction:column;gap:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.actions .grow{flex:1}
+.mute{color:var(--mute)}
+.small{font-size:13px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.sec{margin-top:26px}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.hcard{display:block;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.hcard:hover{border-color:var(--mute)}
+.hcard .t{display:flex;align-items:center;gap:10px}
+.hcard h3{font-size:28px;font-weight:900}
+.hcard .l{margin-top:6px;display:flex;gap:14px;flex-wrap:wrap;font-size:14px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{display:inline-flex;align-items:center;min-height:32px;padding:3px 11px;border:1px solid var(--line);border-radius:99px;background:var(--card);font-size:14px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip.static{cursor:default;min-height:26px;font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tile{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 6px;text-align:center}
+.tile b{display:block;font:800 32px/1 var(--display)}
+.tile span{font-size:12px;color:var(--mute)}
+.viz{width:100%;height:auto;display:block;margin-top:10px}
+.viz text{fill:var(--mute);font:11px var(--mono)}
+.drop{border:1.5px dashed var(--mute);border-radius:12px;padding:18px 16px;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.plates{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.plate{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;text-align:left;cursor:pointer;width:100%}
+.plate.open{border-style:dashed;border-color:var(--mute);cursor:default}
+.plate .who{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.plate .who b{font:800 22px var(--display);letter-spacing:.04em;text-transform:uppercase}
+.plate .big{font:900 84px/.9 var(--display);letter-spacing:-.01em;margin-top:6px;font-variant-numeric:tabular-nums}
+.plate .big small{font-size:28px;font-weight:800;color:var(--acc);margin-left:5px;letter-spacing:.02em}
+.plate .sub{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:13px;color:var(--mute)}
+.bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--line);margin-top:10px}
+.bar i{display:block;min-width:2px}
+.pill{display:inline-block;margin-top:8px;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid currentColor}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none}
+.group{margin-top:14px}
+.group-h{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:3px solid var(--ink)}
+.group-h h3{flex:1;text-transform:uppercase;letter-spacing:.04em}
+.row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.row .chk{flex:none;display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:-6px 0 -6px -10px}
+.row input[type=checkbox]{width:22px;height:22px;min-height:0;accent-color:var(--sig)}
+.row .rt{flex:1;min-width:0;text-align:left;background:none;border:0;padding:4px 0;cursor:pointer;min-height:44px}
+.row .rn{display:block;font-weight:500;overflow-wrap:anywhere}
+.row .rm{display:block;font-size:13px;color:var(--mute)}
+.row.done .rn{text-decoration:line-through;color:var(--mute)}
+.row select{width:auto;max-width:42%;min-height:40px;padding:6px 8px;font-size:14px}
+.qty{font:500 13px var(--mono);color:var(--acc);margin-left:6px}
+.empty{padding:26px 16px;text-align:center}
+.empty h2{margin-bottom:8px}
+.empty .actions{justify-content:center;margin-top:14px}
+.search{margin-bottom:6px}
+.back-link{display:inline-block;margin-top:12px;font-size:14px;color:var(--mute);text-decoration:none}
+.bars{display:flex;flex-direction:column;gap:12px}
+.bars .b{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:end}
+.bars .track{grid-column:1/-1;height:12px;background:var(--line);border-radius:6px;overflow:hidden}
+.bars .track i{display:block;height:100%;background:var(--sig);border-radius:6px}
+.back{position:fixed;inset:0;background:var(--shade);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.sheet{background:var(--card);width:100%;max-width:560px;max-height:90%;overflow:auto;border-radius:16px 16px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom))}
+.sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.sheet-h .x{width:44px;height:44px;border:0;background:none;font-size:28px;line-height:1;cursor:pointer;color:var(--mute)}
+.pick .row{padding:4px 0}
+.pick .add{flex:none}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom));background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;font-size:14px;max-width:90%;z-index:80;display:none}
+#toast.on{display:block}
+.banner{margin-top:8px;padding:10px 12px;border-radius:8px;border:1px solid var(--warn);color:var(--warn);font-size:14px}
+body.ro .act{display:none !important}
+@media (max-width:420px){
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .plate .big{font-size:76px}
+  h1{font-size:40px}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto !important;transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <svg class="logo" viewBox="0 0 40 40" role="img" aria-label="Gramme">
+      <rect width="40" height="40" rx="10" fill="var(--acc)"/>
+      <circle cx="20" cy="10.5" r="3.6" fill="none" stroke="var(--on-acc)" stroke-width="2.6"/>
+      <path d="M12.2 33.5 14.6 16.6h10.8l2.4 16.9z" fill="var(--on-acc)"/>
+      <path d="M15.6 27.6 19 22.6l2.3 3.1 1.6-2 2.7 3.9" fill="none" stroke="var(--acc)" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+    <span class="brand">Gramme</span>
+    <span class="tag">sorties et poids du sac</span>
+    <button class="btn sm ghost" id="acct" data-act="account" hidden>Compte</button>
+  </header>
+  <div id="ro-note"></div>
+  <main id="app" aria-live="polite"></main>
+</div>
+<nav class="nav" aria-label="Sections">
+  <a href="#sorties" data-tab="sorties">Sorties</a>
+  <a href="#materiel" data-tab="materiel">Matériel</a>
+  <a href="#bilan" data-tab="bilan">Bilan</a>
+</nav>
+<div id="toast" role="status"></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ---------- constantes ---------- */
+var CATS=['Abri','Couchage','Sac à dos','Cuisine','Eau et nourriture','Vêtements','Hygiène et santé','Électronique','Navigation et sécurité','Divers'];
+var KINDS=[['carried','Dans le sac'],['worn','Porté sur soi'],['consumable','Consommable']];
+var SEED=[
+  ['Tente 2 places',1450,0,'carried'],['Tapis de sol',480,1,'carried'],['Sac de couchage 3 saisons',900,1,'carried'],
+  ['Sac à dos 50 L',1500,2,'carried'],['Réchaud',90,3,'carried'],['Popote titane',110,3,'carried'],['Cartouche de gaz 230 g',360,3,'consumable'],
+  ['Gourde souple 1 L (vide)',40,4,'carried'],['Eau, 1 litre',1000,4,'consumable'],['Repas lyophilisé',140,4,'consumable'],['Barres de céréales',50,4,'consumable'],
+  ['Veste imperméable',340,5,'carried'],['Polaire',320,5,'carried'],['Chaussures de randonnée',1000,5,'worn'],['Bâtons de marche (paire)',480,5,'carried'],
+  ['Trousse de secours',220,6,'carried'],['Crème solaire',90,6,'carried'],['Lampe frontale',85,7,'carried'],['Batterie externe',280,7,'carried'],
+  ['Carte papier',60,8,'carried'],['Couteau',60,8,'carried'],['Montre GPS',45,7,'worn']
+];
+
+/* ---------- état ---------- */
+var db=null, canWrite=true;
+var state={gear:{},hikes:{},ready:{gear:false,hikes:false},slow:false,auth:'boot',codeSent:false,loginEmail:'',filter:'all',q:''};
+var inflight={};
+var pickCtx=null; /* {hikeId,q} quand la feuille d'ajout est ouverte */
+
+/* ---------- utilitaires ---------- */
+function $(s,r){return (r||document).querySelector(s)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function uid(){return Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4)}
+function num(v){var n=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(n)?n:null}
+function fmt(n,d){return Number(n).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d})}
+function fmtW(g){g=g||0;return g<1000?fmt(Math.round(g),0)+' g':fmt(g/1000,g>=10000?1:2)+' kg'}
+function fmtDate(iso){if(!iso)return '';var d=new Date(iso+'T12:00:00');return isNaN(d)?iso:d.toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})}
+function fmtDur(min){if(min==null)return '–';var h=Math.floor(min/60),m=Math.round(min%60);if(m===60){h++;m=0}return h+' h '+(m<10?'0':'')+m}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function ci(cat){var i=CATS.indexOf(cat);return i<0?9:i}
+function kindLabel(k){for(var i=0;i<KINDS.length;i++)if(KINDS[i][0]===k)return KINDS[i][1];return KINDS[0][1]}
+var toastT=null;
+function toast(msg){var t=$('#toast');t.textContent=msg;t.className='on';clearTimeout(toastT);toastT=setTimeout(function(){t.className=''},4200)}
+function errMsg(e){
+  var c=e&&e.code,m=String(e&&e.message||'');
+  if(!navigator.onLine||/fetch|network/i.test(m))return 'Hors ligne : modification impossible pour le moment.';
+  if(c==='quota_exceeded')return 'Espace plein : supprime des éléments avant d\'en ajouter.';
+  if(c==='42501'||c==='PGRST301')return 'Accès refusé. Ton adresse n\'est peut-être pas autorisée.';
+  return 'Enregistrement impossible pour le moment. Réessaie dans un instant.';
+}
+
+/* ---------- écriture (une à la fois par document) ---------- */
+var queues={};
+function enqueue(path,fn){
+  inflight[path]=(inflight[path]||0)+1;
+  var p=(queues[path]||Promise.resolve()).then(fn).catch(function(e){toast(errMsg(e))}).then(function(){
+    setTimeout(function(){inflight[path]=Math.max(0,(inflight[path]||1)-1)},1200);
+  });
+  queues[path]=p;return p;
+}
+function saveHike(h,keys){
+  if(!db)return;
+  var data={};keys.forEach(function(k){data[k]=h[k]===undefined?null:h[k]});
+  enqueue('hikes/'+h.id,function(){return db.doc('hikes/'+h.id).update(data)});
+}
+function mutateHike(id,fn,keys){
+  var cur=state.hikes[id];if(!cur||!canWrite)return;
+  var h=structuredClone(cur);fn(h);state.hikes[id]=h;render();refreshPick();saveHike(h,keys);
+}
+function saveGear(g){
+  if(!db)return;var d={name:g.name,g:g.g,cat:g.cat,kind:g.kind};
+  enqueue('gear/'+g.id,function(){return db.doc('gear/'+g.id).set(d)});
+}
+
+/* ---------- calculs ---------- */
+function compute(h){
+  var people=h.people||[],items=h.items||[];
+  function mk(){return {pack:0,base:0,conso:0,worn:0,byCat:{},n:0,done:0}}
+  var per={};people.forEach(function(p){per[p.id]=mk()});
+  var none=mk();
+  items.forEach(function(i){
+    var w=(i.g||0)*(i.qty||1);
+    var b=(i.who&&per[i.who])?per[i.who]:none;
+    if(i.kind==='worn'){b.worn+=w}
+    else{b.pack+=w;if(i.kind==='consumable')b.conso+=w;else b.base+=w;b.byCat[i.cat]=(b.byCat[i.cat]||0)+w}
+    b.n++;if(i.packed)b.done++;
+  });
+  var total=none.pack,n=none.n,done=none.done;
+  people.forEach(function(p){total+=per[p.id].pack;n+=per[p.id].n;done+=per[p.id].done});
+  return {per:per,none:none,total:total,n:n,done:done};
+}
+function avgKg(people){
+  var s=0,c=0;people.forEach(function(p){if(p.kg){s+=p.kg;c++}});return c?s/c:70;
+}
+function balance(h,resetAll){
+  var people=h.people;if(people.length<2)return false;
+  if(resetAll)h.items.forEach(function(i){if(i.kind!=='worn')i.who=''});
+  var avg=avgKg(people),cap={},load={};
+  people.forEach(function(p){cap[p.id]=p.kg||avg;load[p.id]=0});
+  h.items.forEach(function(i){if(i.kind!=='worn'&&i.who&&load[i.who]!==undefined)load[i.who]+=(i.g||0)*(i.qty||1)});
+  var todo=[],keep=[];
+  h.items.forEach(function(i){
+    if(i.kind!=='worn'&&!i.who){for(var k=0;k<(i.qty||1);k++){var u=Object.assign({},i);u.qty=1;u.id=uid();todo.push(u)}}
+    else keep.push(i);
+  });
+  if(!todo.length)return false;
+  todo.sort(function(a,b){return (b.g||0)-(a.g||0)});
+  todo.forEach(function(u){
+    var best=null,bs=Infinity;
+    people.forEach(function(p){var s=(load[p.id]+(u.g||0))/cap[p.id];if(s<bs){bs=s;best=p}});
+    u.who=best.id;load[best.id]+=(u.g||0);
+  });
+  todo.forEach(function(u){
+    var ex=null;
+    for(var j=0;j<keep.length;j++){var m=keep[j];
+      if(m.gearId===u.gearId&&m.name===u.name&&m.g===u.g&&m.who===u.who&&m.kind===u.kind&&m.cat===u.cat&&!m.packed===!u.packed){ex=m;break}}
+    if(ex)ex.qty=(ex.qty||1)+1;else keep.push(u);
+  });
+  h.items=keep;return true;
+}
+
+/* ---------- GPX ---------- */
+function hav(a,b){
+  var R=6371000,r=Math.PI/180,dLat=(b.lat-a.lat)*r,dLon=(b.lon-a.lon)*r;
+  var x=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(x)));
+}
+function parseGpx(text){
+  var doc=new DOMParser().parseFromString(text,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length)throw new Error('Fichier GPX illisible.');
+  var nodes=Array.prototype.slice.call(doc.getElementsByTagNameNS('*','trkpt'));
+  if(nodes.length<2)nodes=Array.prototype.slice.call(doc.getElementsByTagNameNS('*','rtept'));
+  var pts=[];
+  nodes.forEach(function(n){
+    var lat=parseFloat(n.getAttribute('lat')),lon=parseFloat(n.getAttribute('lon'));
+    if(!isFinite(lat)||!isFinite(lon))return;
+    var e=n.getElementsByTagNameNS('*','ele')[0],t=n.getElementsByTagNameNS('*','time')[0];
+    var ele=e?parseFloat(e.textContent):null,tm=t?Date.parse(t.textContent):null;
+    pts.push({lat:lat,lon:lon,ele:isFinite(ele)?ele:null,t:isFinite(tm)?tm:null});
+  });
+  if(pts.length<2)throw new Error('Aucune trace trouvée dans ce fichier.');
+  var d=[0],i;
+  for(i=1;i<pts.length;i++)d.push(d[i-1]+hav(pts[i-1],pts[i]));
+  var total=d[d.length-1];
+  var withEle=pts.filter(function(p){return p.ele!=null}).length;
+  var up=null,down=null,sm=null,minE=null,maxE=null;
+  if(withEle>=pts.length*0.8){
+    var last=null;
+    var raw=pts.map(function(p){if(p.ele!=null)last=p.ele;return last});
+    var first=raw.find(function(v){return v!=null});
+    raw=raw.map(function(v){return v==null?first:v});
+    sm=raw.map(function(_,k){var s=0,c=0;for(var j=k-2;j<=k+2;j++){if(j>=0&&j<raw.length){s+=raw[j];c++}}return s/c});
+    up=0;down=0;var ref=sm[0];
+    sm.forEach(function(e){if(e-ref>=3){up+=e-ref;ref=e}else if(ref-e>=3){down+=ref-e;ref=e}});
+    minE=Math.min.apply(null,sm);maxE=Math.max.apply(null,sm);
+  }
+  var durMin=null,movMin=null,date=null;
+  if(pts[0].t!=null&&pts[pts.length-1].t!=null){
+    durMin=(pts[pts.length-1].t-pts[0].t)/60000;
+    var mv=0;
+    for(i=1;i<pts.length;i++){
+      if(pts[i].t==null||pts[i-1].t==null)continue;
+      var dt=(pts[i].t-pts[i-1].t)/1000;
+      if(dt>0&&dt<=90&&(d[i]-d[i-1])/dt>0.25)mv+=dt;
+    }
+    movMin=mv>0?mv/60:durMin;
+    var dd=new Date(pts[0].t);
+    date=dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0');
+  }
+  var profile=[];
+  if(sm){
+    var N=90,idx=0;
+    for(var k=0;k<N;k++){
+      var target=total*k/(N-1);
+      while(idx<d.length-1&&d[idx]<target)idx++;
+      profile.push([Math.round(d[idx]/10)/100,Math.round(sm[idx])]);
+    }
+  }
+  var route=[],R=140;
+  for(var q=0;q<R;q++){var p=pts[Math.round(q*(pts.length-1)/(R-1))];route.push([Math.round(p.lat*1e5)/1e5,Math.round(p.lon*1e5)/1e5])}
+  return {
+    stats:{km:Math.round(total/10)/100,up:up==null?null:Math.round(up),down:down==null?null:Math.round(down),
+      minE:minE==null?null:Math.round(minE),maxE:maxE==null?null:Math.round(maxE),
+      durMin:durMin==null?null:Math.round(durMin),movMin:movMin==null?null:Math.round(movMin)},
+    profile:profile,route:route,date:date
+  };
+}
+
+/* ---------- dessins ---------- */
+function routeSvg(route){
+  if(!route||route.length<2)return '';
+  var W=320,H=190,P=14,la=route.map(function(p){return p[0]}),lo=route.map(function(p){return p[1]});
+  var minLa=Math.min.apply(null,la),maxLa=Math.max.apply(null,la),minLo=Math.min.apply(null,lo),maxLo=Math.max.apply(null,lo);
+  var k=Math.cos(((minLa+maxLa)/2)*Math.PI/180);
+  var w=Math.max((maxLo-minLo)*k,1e-6),h=Math.max(maxLa-minLa,1e-6);
+  var s=Math.min((W-2*P)/w,(H-2*P)/h),ox=(W-w*s)/2,oy=(H-h*s)/2;
+  var pts=route.map(function(p){return (ox+(p[1]-minLo)*k*s).toFixed(1)+','+(oy+(maxLa-p[0])*s).toFixed(1)});
+  var a=pts[0].split(','),z=pts[pts.length-1].split(',');
+  var grid='';for(var x=40;x<W;x+=40)grid+='<line x1="'+x+'" y1="0" x2="'+x+'" y2="'+H+'" stroke="var(--line)" stroke-width="1"/>';
+  for(var y=38;y<H;y+=38)grid+='<line x1="0" y1="'+y+'" x2="'+W+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"/>';
+  return '<svg class="viz" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Tracé de la randonnée vu du dessus">'+grid+
+    '<polyline points="'+pts.join(' ')+'" fill="none" stroke="var(--sig)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'+
+    '<circle cx="'+a[0]+'" cy="'+a[1]+'" r="5" fill="var(--card)" stroke="var(--ink)" stroke-width="2"/>'+
+    '<circle cx="'+z[0]+'" cy="'+z[1]+'" r="5" fill="var(--acc)" stroke="var(--ink)" stroke-width="2"/></svg>';
+}
+function profileSvg(pr){
+  if(!pr||pr.length<2)return '';
+  var W=320,H=120,L=48,R=8,T=10,B=20;
+  var es=pr.map(function(p){return p[1]}),mn=Math.min.apply(null,es),mx=Math.max.apply(null,es);
+  if(mx-mn<10){mx=mn+10}
+  var km=pr[pr.length-1][0]||1;
+  function X(v){return L+(v/km)*(W-L-R)}
+  function Y(e){return T+(1-(e-mn)/(mx-mn))*(H-T-B)}
+  var line=pr.map(function(p,i){return (i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)}).join(' ');
+  var area=line+' L'+X(km).toFixed(1)+' '+(H-B)+' L'+X(0).toFixed(1)+' '+(H-B)+' Z';
+  return '<svg class="viz" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Profil d\'altitude de '+fmt(mn,0)+' à '+fmt(mx,0)+' mètres">'+
+    '<line x1="'+L+'" y1="'+Y(mx)+'" x2="'+(W-R)+'" y2="'+Y(mx)+'" stroke="var(--line)"/>'+
+    '<line x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-R)+'" y2="'+(H-B)+'" stroke="var(--line)"/>'+
+    '<path d="'+area+'" fill="var(--sig)" opacity=".22"/><path d="'+line+'" fill="none" stroke="var(--sig)" stroke-width="2.2" stroke-linejoin="round"/>'+
+    '<text x="'+(L-4)+'" y="'+(Y(mx)+4)+'" text-anchor="end">'+fmt(mx,0)+' m</text>'+
+    '<text x="'+(L-4)+'" y="'+(H-B+4)+'" text-anchor="end">'+fmt(mn,0)+' m</text>'+
+    '<text x="'+L+'" y="'+(H-4)+'">0 km</text><text x="'+(W-R)+'" y="'+(H-4)+'" text-anchor="end">'+fmt(km,1)+' km</text></svg>';
+}
+function catBar(byCat){
+  var tot=0,parts='';CATS.forEach(function(c){tot+=byCat[c]||0});
+  if(!tot)return '<div class="bar" aria-hidden="true"></div>';
+  CATS.forEach(function(c,i){var v=byCat[c]||0;if(v)parts+='<i style="flex:'+v+' 1 0;background:var(--c'+i+')" title="'+esc(c)+' : '+fmtW(v)+'"></i>'});
+  return '<div class="bar" aria-hidden="true">'+parts+'</div>';
+}
+
+/* ---------- routes ---------- */
+function route(){
+  var h=(location.hash||'').replace(/^#/,'');
+  if(h.indexOf('sortie-')===0)return {name:'sortie',tab:'sorties',id:h.slice(7)};
+  if(h==='materiel')return {name:'materiel',tab:'materiel'};
+  if(h==='bilan')return {name:'bilan',tab:'bilan'};
+  return {name:'sorties',tab:'sorties'};
+}
+function currentHikeId(){var r=route();return r.name==='sortie'?r.id:null}
+
+/* ---------- vues ---------- */
+function emptyBlock(title,text,btns){
+  return '<div class="card empty"><h2>'+esc(title)+'</h2><p class="mute">'+esc(text)+'</p><div class="actions">'+btns+'</div></div>';
+}
+function viewHikes(){
+  var list=Object.keys(state.hikes).map(function(k){return state.hikes[k]}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
+  var head='<div class="head"><h1>Sorties</h1><button class="btn pri act" data-act="new-hike">Nouvelle sortie</button></div>';
+  if(!list.length)return head+emptyBlock('Aucune sortie pour le moment','Crée ta première sortie, ajoute les personnes qui partent et compose les sacs.','<button class="btn pri act" data-act="new-hike">Créer une sortie</button>');
+  return head+'<ul class="cards">'+list.map(function(h){
+    var c=compute(h),s=h.stats,np=(h.people||[]).length;
+    var line='';
+    if(s){line+='<span class="mono">'+fmt(s.km,1)+' km</span>';if(s.up!=null)line+='<span class="mono">D+ '+fmt(s.up,0)+' m</span>';if(s.movMin!=null)line+='<span class="mono">'+fmtDur(s.movMin)+'</span>'}
+    else line+='<span class="mute">Pas encore de trace GPX</span>';
+    var avg=np?c.total/np:c.total;
+    if(c.total>0)line+='<span class="mono">'+fmtW(avg)+(np>1?' par sac':' dans le sac')+'</span>';
+    var chips=(h.people||[]).map(function(p){return '<span class="chip static">'+esc(p.name)+'</span>'}).join('');
+    return '<li><a class="hcard" href="#sortie-'+esc(h.id)+'"><div class="t"><span class="slash" aria-hidden="true"></span><h3>'+esc(h.name)+'</h3></div>'+
+      '<div class="mute small" style="margin-top:4px">'+esc(fmtDate(h.date))+(h.place?' · '+esc(h.place):'')+'</div>'+
+      '<div class="l">'+line+'</div>'+(chips?'<div class="chips">'+chips+'</div>':'')+'</a></li>';
+  }).join('')+'</ul>';
+}
+function viewHike(id){
+  var h=state.hikes[id];
+  if(!h)return '<a class="back-link" href="#sorties">← Sorties</a>'+emptyBlock('Sortie introuvable','Elle a peut-être été supprimée.','<a class="btn" href="#sorties">Retour aux sorties</a>');
+  var people=h.people||[],items=h.items||[],c=compute(h),target=h.targetPct||20;
+  var out='<a class="back-link" href="#sorties">← Sorties</a>';
+  out+='<div class="head" style="margin-top:6px"><div><h1>'+esc(h.name)+'</h1><div class="mute small">'+esc(fmtDate(h.date))+(h.place?' · '+esc(h.place):'')+'</div></div>'+
+    '<div class="actions" style="margin:0"><button class="btn sm act" data-act="edit-hike">Modifier</button><button class="btn sm" data-act="share">Copier la liste</button></div></div>';
+  if(h.notes)out+='<p class="mute" style="margin-bottom:6px">'+esc(h.notes)+'</p>';
+
+  /* trace */
+  out+='<section class="sec" aria-labelledby="s-trace"><div class="sec-h"><h2 id="s-trace">Trace</h2></div>';
+  if(h.stats){
+    var s=h.stats;
+    out+='<div class="card"><div class="tiles">'+
+      '<div class="tile"><b>'+fmt(s.km,1)+'</b><span>km</span></div>'+
+      '<div class="tile"><b>'+(s.up!=null?fmt(s.up,0):'–')+'</b><span>D+ en m</span></div>'+
+      '<div class="tile"><b>'+(s.down!=null?fmt(s.down,0):'–')+'</b><span>D− en m</span></div>'+
+      '<div class="tile"><b>'+fmtDur(s.movMin)+'</b><span>en mouvement</span></div></div>'+
+      routeSvg(h.route)+profileSvg(h.profile)+
+      '<div class="mute small" style="margin-top:8px">'+(s.durMin!=null?'Durée totale '+fmtDur(s.durMin)+'. ':'')+(s.maxE!=null?'Altitude de '+fmt(s.minE,0)+' à '+fmt(s.maxE,0)+' m.':'')+'</div>'+
+      '<div class="actions act"><label class="btn sm ghost" for="gpxIn">Remplacer le GPX</label></div></div>';
+  }else{
+    out+='<div class="drop"><p>Importe le fichier GPX exporté depuis l\'appli COROS pour afficher la distance, le dénivelé, la durée et le tracé.</p><label class="btn pri act" for="gpxIn">Importer un GPX</label></div>';
+  }
+  out+='<input type="file" id="gpxIn" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden></section>';
+
+  /* sacs */
+  out+='<section class="sec" aria-labelledby="s-sacs"><div class="sec-h"><h2 id="s-sacs">Sacs</h2><button class="btn sm act" data-act="new-person">Ajouter une personne</button></div>';
+  if(!people.length){
+    out+='<div class="card mute">Ajoute les personnes qui partent (toi compris) pour répartir le poids. Le poids du corps est facultatif et sert à comparer la charge à '+target+' %.</div>';
+  }else{
+    out+='<div class="plates">';
+    people.forEach(function(p){
+      var b=c.per[p.id],ratio=p.kg?(b.pack/1000)/p.kg*100:null;
+      var pill='';
+      if(ratio!=null){var over=ratio>target;pill='<span class="pill '+(over?'warn':'ok')+'">'+fmt(ratio,0)+' % du poids du corps'+(over?', au-dessus de '+target+' %':'')+'</span>'}
+      out+='<button class="plate act" data-act="edit-person" data-id="'+esc(p.id)+'" aria-label="Modifier '+esc(p.name)+'">'+
+        '<div class="who"><b>'+esc(p.name)+'</b><span class="mute small">'+(p.kg?fmt(p.kg,0)+' kg':'')+'</span></div>'+
+        '<div class="big">'+fmt(b.pack/1000,1)+'<small>kg</small></div>'+
+        '<div class="sub"><span>Base '+fmtW(b.base)+'</span><span>Conso. '+fmtW(b.conso)+'</span>'+(b.worn?'<span>Sur soi '+fmtW(b.worn)+'</span>':'')+'</div>'+
+        catBar(b.byCat)+pill+'</button>';
+    });
+    if(c.none.pack>0){
+      var nn=c.none;
+      out+='<div class="plate open"><div class="who"><b>À répartir</b></div><div class="big">'+fmt(nn.pack/1000,1)+'<small>kg</small></div>'+
+        '<div class="sub"><span>Base '+fmtW(nn.base)+'</span><span>Conso. '+fmtW(nn.conso)+'</span></div>'+catBar(nn.byCat)+'</div>';
+    }
+    out+='</div>';
+    out+='<div class="actions act"><button class="btn sm" data-act="balance"'+(people.length<2?' disabled':'')+'>Répartir automatiquement</button>'+
+      '<button class="btn sm ghost" data-act="reset-assign"'+(people.length<2?' disabled':'')+'>Tout remettre à répartir</button></div>'+
+      '<p class="mute small" style="margin-top:8px">La répartition automatique place le matériel « À répartir » en tenant compte du poids du corps quand il est renseigné. Ce que tu as attribué à la main ne bouge pas.</p>';
+  }
+  out+='</section>';
+
+  /* liste */
+  out+='<section class="sec" aria-labelledby="s-liste"><div class="sec-h"><h2 id="s-liste">Liste</h2><button class="btn pri sm act" data-act="pick">Ajouter du matériel</button></div>';
+  if(!items.length){
+    out+='<div class="card empty"><p class="mute">La liste est vide. Pioche dans ton inventaire ou crée du matériel à la volée.</p></div>';
+  }else{
+    var f=state.filter;
+    var chips=[['all','Tout']].concat(people.map(function(p){return [p.id,p.name]})).concat([['none','À répartir']]);
+    out+='<div class="chips" role="group" aria-label="Filtrer par personne" style="margin:0 0 4px">'+chips.map(function(x){
+      return '<button class="chip" data-act="filter" data-id="'+esc(x[0])+'" aria-pressed="'+(f===x[0])+'">'+esc(x[1])+'</button>'}).join('')+'</div>';
+    out+='<div class="mute small" style="margin:8px 0 2px">'+c.done+' sur '+c.n+' lignes prêtes dans le sac</div>';
+    var shown=items.filter(function(i){
+      if(f==='all')return true;
+      var known=i.who&&people.some(function(p){return p.id===i.who});
+      if(f==='none')return !known;
+      return i.who===f;
+    });
+    var groups={};shown.forEach(function(i){var k=CATS.indexOf(i.cat)<0?'Divers':i.cat;(groups[k]=groups[k]||[]).push(i)});
+    if(!shown.length)out+='<p class="mute" style="margin-top:12px">Rien dans cette sélection.</p>';
+    CATS.forEach(function(cat,ix){
+      var g=groups[cat];if(!g)return;
+      var sub=0;g.forEach(function(i){if(i.kind!=='worn')sub+=(i.g||0)*(i.qty||1)});
+      out+='<div class="group"><div class="group-h"><i class="dot" style="background:var(--c'+ix+')"></i><h3>'+esc(cat)+'</h3><span class="mono small">'+fmtW(sub)+'</span></div>';
+      g.forEach(function(i){
+        var opts='<option value="">'+(i.kind==='worn'?'Personne':'À répartir')+'</option>'+people.map(function(p){return '<option value="'+esc(p.id)+'"'+(i.who===p.id?' selected':'')+'>'+esc(p.name)+'</option>'}).join('');
+        var w=(i.g||0)*(i.qty||1);
+        out+='<div class="row'+(i.packed?' done':'')+'"><label class="chk"><input type="checkbox" data-act="pack" data-id="'+esc(i.id)+'"'+(i.packed?' checked':'')+' aria-label="Prêt : '+esc(i.name)+'"></label>'+
+          '<button class="rt act" data-act="edit-item" data-id="'+esc(i.id)+'"><span class="rn">'+esc(i.name)+((i.qty||1)>1?'<span class="qty">×'+i.qty+'</span>':'')+'</span>'+
+          '<span class="rm mono">'+fmtW(w)+' · '+esc(kindLabel(i.kind))+'</span></button>'+
+          '<select data-act="who" data-id="'+esc(i.id)+'" aria-label="Porté par, '+esc(i.name)+'">'+opts+'</select>'+
+          '<button class="btn sm danger act" data-act="del-item" data-arm="Retirer ?" data-id="'+esc(i.id)+'" aria-label="Retirer '+esc(i.name)+' de la liste">&times;</button></div>';
+      });
+      out+='</div>';
+    });
+  }
+  out+='</section>';
+  return out;
+}
+function gearListHtml(){
+  var q=state.q.trim().toLowerCase();
+  var all=Object.keys(state.gear).map(function(k){return state.gear[k]}).filter(function(g){return !q||g.name.toLowerCase().indexOf(q)>=0||g.cat.toLowerCase().indexOf(q)>=0});
+  all.sort(function(a,b){return a.name.localeCompare(b.name,'fr')});
+  if(!all.length)return '<p class="mute" style="margin-top:12px">Aucun résultat.</p>';
+  var out='',groups={};all.forEach(function(g){(groups[CATS.indexOf(g.cat)<0?'Divers':g.cat]=groups[CATS.indexOf(g.cat)<0?'Divers':g.cat]||[]).push(g)});
+  CATS.forEach(function(cat,ix){
+    var g=groups[cat];if(!g)return;var sub=0;g.forEach(function(x){sub+=x.g||0});
+    out+='<div class="group"><div class="group-h"><i class="dot" style="background:var(--c'+ix+')"></i><h3>'+esc(cat)+'</h3><span class="mono small">'+g.length+' · '+fmtW(sub)+'</span></div>';
+    g.forEach(function(x){
+      out+='<div class="row"><button class="rt act" data-act="gear-edit" data-id="'+esc(x.id)+'"><span class="rn">'+esc(x.name)+'</span><span class="rm mono">'+fmtW(x.g)+' · '+esc(kindLabel(x.kind))+'</span></button>'+
+        '<button class="btn sm danger act" data-act="del-gear" data-arm="Supprimer ?" data-id="'+esc(x.id)+'" aria-label="Supprimer '+esc(x.name)+'">Supprimer</button></div>';
+    });
+    out+='</div>';
+  });
+  return out;
+}
+function viewGear(){
+  var n=Object.keys(state.gear).length;
+  var head='<div class="head"><h1>Matériel</h1><button class="btn pri act" data-act="gear-new">Ajouter</button></div>';
+  if(!n)return head+emptyBlock('Ton inventaire est vide','Ajoute chaque objet avec son poids et sa catégorie. Tu pourras ensuite composer les sacs en deux touches.',
+    '<button class="btn pri act" data-act="gear-new">Ajouter un matériel</button><button class="btn act" data-act="seed">Charger un équipement type</button>');
+  var tb=0,tc=0,tw=0;
+  Object.keys(state.gear).forEach(function(k){var x=state.gear[k],w=x.g||0;if(x.kind==='worn')tw+=w;else if(x.kind==='consumable')tc+=w;else tb+=w});
+  var sum='<div class="card" style="margin-bottom:12px"><div class="mute small">Poids total du sac, tout l\'inventaire</div>'+
+    '<div class="plate" style="border:0;padding:0;background:none;cursor:default"><div class="big">'+fmt((tb+tc)/1000,1)+'<small>kg</small></div></div>'+
+    '<div class="tiles" style="margin-top:10px;grid-template-columns:repeat(3,1fr)">'+
+    '<div class="tile"><b>'+fmt(tb/1000,1)+'</b><span>kg de base</span></div>'+
+    '<div class="tile"><b>'+fmt(tc/1000,1)+'</b><span>kg consommables</span></div>'+
+    '<div class="tile"><b>'+fmt(tw/1000,1)+'</b><span>kg sur soi</span></div></div></div>';
+  return head+sum+'<input id="q" class="search" type="search" placeholder="Rechercher un objet ou une catégorie" aria-label="Rechercher dans le matériel" value="'+esc(state.q)+'"><div id="gearList">'+gearListHtml()+'</div>'+
+    '<p class="mute small" style="margin-top:14px">Les poids sont en grammes. Le poids d\'un objet peut être ajusté dans une sortie sans toucher à l\'inventaire.</p>';
+}
+function viewBilan(){
+  var hikes=Object.keys(state.hikes).map(function(k){return state.hikes[k]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
+  var withS=hikes.filter(function(h){return h.stats});
+  var head='<div class="head"><h1>Bilan</h1></div>';
+  if(!hikes.length)return head+emptyBlock('Rien à compter pour l\'instant','Les statistiques apparaissent dès que tu as créé une sortie et importé sa trace.','<a class="btn pri" href="#sorties">Aller aux sorties</a>');
+  var km=0,up=0,mov=0;withS.forEach(function(h){km+=h.stats.km||0;up+=h.stats.up||0;mov+=h.stats.movMin||0});
+  var out=head+'<div class="card"><div class="tiles">'+
+    '<div class="tile"><b>'+hikes.length+'</b><span>sorties</span></div>'+
+    '<div class="tile"><b>'+fmt(km,0)+'</b><span>km</span></div>'+
+    '<div class="tile"><b>'+fmt(up,0)+'</b><span>D+ cumulé en m</span></div>'+
+    '<div class="tile"><b>'+fmt(mov/60,0)+'</b><span>heures de marche</span></div></div></div>';
+  var rows=hikes.map(function(h){var c=compute(h),np=(h.people||[]).length||1;return {h:h,avg:c.total/np,np:(h.people||[]).length}}).filter(function(r){return r.avg>0});
+  out+='<section class="sec" aria-labelledby="s-ch"><div class="sec-h"><h2 id="s-ch">Charge moyenne par sac</h2></div>';
+  if(!rows.length)out+='<div class="card mute">Ajoute du matériel à une sortie pour comparer le poids des sacs.</div>';
+  else{
+    var mx=Math.max.apply(null,rows.map(function(r){return r.avg}));
+    out+='<div class="card bars">'+rows.map(function(r){
+      var s=r.h.stats;
+      return '<div class="b"><div><a href="#sortie-'+esc(r.h.id)+'" style="text-decoration:none"><b>'+esc(r.h.name)+'</b></a><div class="mute small">'+esc(fmtDate(r.h.date))+(s?' · '+fmt(s.km,1)+' km'+(s.up!=null?' · D+ '+fmt(s.up,0)+' m':''):'')+'</div></div>'+
+        '<div class="mono"><b>'+fmt(r.avg/1000,1)+' kg</b></div><div class="track" aria-hidden="true"><i style="width:'+Math.max(2,r.avg/mx*100).toFixed(1)+'%"></i></div></div>';
+    }).join('')+'</div>';
+  }
+  out+='</section>';
+  return out;
+}
+
+/* ---------- rendu ---------- */
+function setNav(tab){
+  document.querySelectorAll('.nav a').forEach(function(a){
+    if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+  });
+}
+function viewAuth(){
+  var a=state.auth;
+  if(a==='setup')return '<div class="auth card"><h1>Configuration</h1><p class="mute">Renseigne l\'adresse et la clé de ton projet Supabase dans le fichier <b>config.js</b>, puis recharge la page. Les étapes sont dans le README.</p></div>';
+  if(a==='denied')return '<div class="auth card"><h1>Accès à valider</h1><p class="mute">L\'adresse <b>'+esc(userEmail)+'</b> n\'est pas encore autorisée. Demande à la personne qui gère Gramme de l\'ajouter, puis reconnecte-toi.</p><div class="actions"><button class="btn" data-act="signout">Se déconnecter</button></div></div>';
+  if(a==='out'){
+    if(!state.codeSent)return '<div class="auth"><h1>Connexion</h1><p class="mute" style="margin-bottom:14px">Tes sorties et ton matériel, partagés avec ceux que tu invites. Entre ton adresse e-mail pour recevoir un code.</p>'+
+      '<form class="form" data-form="login-email">'+field('l-mail','Adresse e-mail','<input id="l-mail" name="email" type="email" inputmode="email" autocomplete="email" required value="'+esc(state.loginEmail)+'">')+
+      '<button class="btn pri" type="submit">Recevoir un code</button></form></div>';
+    return '<div class="auth"><h1>Code reçu</h1><p class="mute" style="margin-bottom:14px">Un code a été envoyé à <b>'+esc(state.loginEmail)+'</b>. Pense à regarder les courriers indésirables.</p>'+
+      '<form class="form" data-form="login-code">'+field('l-code','Code','<input id="l-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,10}" required>')+
+      '<button class="btn pri" type="submit">Se connecter</button><button class="btn ghost" type="button" data-act="login-reset">Changer d\'adresse</button></form></div>';
+  }
+  return '<div class="card empty"><p class="mute">Chargement…</p></div>';
+}
+function render(){
+  var app=$('#app'),r=route(),inn=state.auth==='in';
+  setNav(r.tab);
+  $('#acct').hidden=!inn;document.querySelector('.nav').hidden=!inn;
+  $('#ro-note').innerHTML=(inn&&!navigator.onLine)?'<div class="banner">Hors ligne : tu vois les dernières données enregistrées. Les modifications attendent la connexion.</div>':'';
+  if(!inn){app.innerHTML=viewAuth();return}
+  if(!state.ready.gear||!state.ready.hikes){
+    app.innerHTML='<div class="card empty"><p class="mute">'+(state.slow?'Les données ne répondent pas encore. Vérifie ta connexion, la page se mettra à jour toute seule.':'Chargement de tes sorties…')+'</p></div>';return;
+  }
+  var html;
+  if(r.name==='sortie')html=viewHike(r.id);
+  else if(r.name==='materiel')html=viewGear();
+  else if(r.name==='bilan')html=viewBilan();
+  else html=viewHikes();
+  app.innerHTML=html;
+}
+var pending=false;
+function scheduleRender(){
+  if(pending)return;pending=true;
+  setTimeout(function(){
+    pending=false;
+    var a=document.activeElement;
+    if(a&&a.id==='q'){var l=$('#gearList');if(l)l.innerHTML=gearListHtml();}
+    else render();
+    refreshPick();
+  },30);
+}
+
+/* ---------- feuilles ---------- */
+function openSheet(title,body,focus){
+  closeSheet();
+  var back=document.createElement('div');back.className='back';back.id='sheetBack';
+  back.innerHTML='<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetT"><div class="sheet-h"><h2 id="sheetT">'+esc(title)+'</h2><button class="x" data-act="close" aria-label="Fermer">&times;</button></div><div>'+body+'</div></div>';
+  document.body.appendChild(back);document.body.classList.add('lock');
+  back.addEventListener('mousedown',function(e){if(e.target===back)closeSheet()});
+  if(focus!==false){var f=back.querySelector('input:not([type=hidden]):not([type=checkbox]),textarea');if(f)f.focus()}
+}
+function closeSheet(){
+  var b=$('#sheetBack');if(b)b.remove();
+  document.body.classList.remove('lock');pickCtx=null;
+}
+function field(id,label,inner){return '<label class="f" for="'+id+'">'+esc(label)+inner+'</label>'}
+function optList(list,sel){return list.map(function(x){return '<option value="'+esc(x[0])+'"'+(x[0]===sel?' selected':'')+'>'+esc(x[1])+'</option>'}).join('')}
+
+function hikeSheet(id){
+  var h=id?state.hikes[id]:null;
+  var others=Object.keys(state.hikes).map(function(k){return state.hikes[k]}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
+  var b='<form class="form" data-form="hike" data-id="'+esc(id||'')+'">'+
+    field('f-name','Nom de la sortie','<input id="f-name" name="name" required maxlength="80" value="'+esc(h?h.name:'')+'" placeholder="Tour du Mont Aiguille">')+
+    '<div class="two">'+field('f-date','Date','<input id="f-date" name="date" type="date" required value="'+esc(h?h.date:today())+'">')+
+    field('f-place','Lieu','<input id="f-place" name="place" maxlength="80" value="'+esc(h?h.place||'':'')+'" placeholder="Vercors">')+'</div>';
+  if(!h){
+    b+=field('f-people','Qui part ? (prénoms séparés par des virgules)','<input id="f-people" name="people" maxlength="200" placeholder="Léa, Tom">');
+    if(others.length)b+=field('f-copy','Repartir d\'une sortie existante','<select id="f-copy" name="copy"><option value="">Liste vide</option>'+others.map(function(o){return '<option value="'+esc(o.id)+'">'+esc(o.name)+' ('+esc(fmtDate(o.date))+')</option>'}).join('')+'</select>');
+  }
+  b+=field('f-target','Charge cible, en % du poids du corps','<input id="f-target" name="target" type="number" inputmode="numeric" min="5" max="50" value="'+(h&&h.targetPct?h.targetPct:20)+'">');
+  b+=field('f-notes','Notes','<textarea id="f-notes" name="notes" maxlength="600">'+esc(h?h.notes||'':'')+'</textarea>');
+  b+='<div class="actions"><button class="btn pri grow" type="submit">'+(h?'Enregistrer':'Créer la sortie')+'</button>'+(h?'<button class="btn danger" type="button" data-act="del-hike" data-id="'+esc(id)+'">Supprimer</button>':'')+'</div></form>';
+  openSheet(h?'Modifier la sortie':'Nouvelle sortie',b);
+}
+function personSheet(hid,pid){
+  var h=state.hikes[hid];if(!h)return;
+  var p=pid?h.people.filter(function(x){return x.id===pid})[0]:null;
+  var b='<form class="form" data-form="person" data-hike="'+esc(hid)+'" data-id="'+esc(pid||'')+'">'+
+    field('p-name','Prénom','<input id="p-name" name="name" required maxlength="40" value="'+esc(p?p.name:'')+'">')+
+    field('p-kg','Poids du corps en kg (facultatif)','<input id="p-kg" name="kg" type="number" inputmode="decimal" min="20" max="250" step="any" value="'+(p&&p.kg?p.kg:'')+'">')+
+    '<div class="actions"><button class="btn pri grow" type="submit">Enregistrer</button>'+(p?'<button class="btn danger" type="button" data-act="del-person" data-id="'+esc(pid)+'">Retirer</button>':'')+'</div></form>';
+  openSheet(p?'Modifier '+p.name:'Ajouter une personne',b);
+}
+function gearSheet(gid,hid){
+  var g=gid?state.gear[gid]:null;
+  var b='<form class="form" data-form="gear" data-id="'+esc(gid||'')+'" data-hike="'+esc(hid||'')+'">'+
+    field('g-name','Nom','<input id="g-name" name="name" required maxlength="80" value="'+esc(g?g.name:'')+'">')+
+    '<div class="two">'+field('g-w','Poids en g','<input id="g-w" name="g" type="number" inputmode="decimal" min="0" step="any" required value="'+(g?g.g:'')+'">')+
+    field('g-cat','Catégorie','<select id="g-cat" name="cat">'+optList(CATS.map(function(c){return [c,c]}),g?g.cat:CATS[0])+'</select>')+'</div>'+
+    field('g-kind','Type','<select id="g-kind" name="kind">'+optList(KINDS,g?g.kind:'carried')+'</select>')+
+    '<p class="mute small">Dans le sac compte dans le poids de base. Consommable (eau, nourriture, gaz) s\'ajoute au poids total. Porté sur soi n\'entre dans aucun sac.</p>'+
+    '<div class="actions"><button class="btn pri grow" type="submit">'+(g?'Enregistrer':(hid?'Créer et ajouter à la sortie':'Ajouter à l\'inventaire'))+'</button>'+(g?'<button class="btn danger" type="button" data-act="del-gear" data-id="'+esc(gid)+'">Supprimer</button>':'')+'</div></form>';
+  openSheet(g?'Modifier le matériel':'Nouveau matériel',b);
+}
+function itemSheet(hid,iid){
+  var h=state.hikes[hid];if(!h)return;
+  var i=h.items.filter(function(x){return x.id===iid})[0];if(!i)return;
+  var b='<form class="form" data-form="item" data-hike="'+esc(hid)+'" data-id="'+esc(iid)+'">'+
+    '<p><b>'+esc(i.name)+'</b><br><span class="mute small">'+esc(i.cat)+' · '+esc(kindLabel(i.kind))+'</span></p>'+
+    '<div class="two">'+field('i-g','Poids unitaire en g','<input id="i-g" name="g" type="number" inputmode="decimal" min="0" step="any" required value="'+(i.g||0)+'">')+
+    field('i-q','Quantité','<input id="i-q" name="qty" type="number" inputmode="numeric" min="1" max="99" required value="'+(i.qty||1)+'">')+'</div>'+
+    field('i-who','Porté par','<select id="i-who" name="who"><option value="">'+(i.kind==='worn'?'Personne':'À répartir')+'</option>'+h.people.map(function(p){return '<option value="'+esc(p.id)+'"'+(i.who===p.id?' selected':'')+'>'+esc(p.name)+'</option>'}).join('')+'</select>')+
+    '<div class="actions"><button class="btn pri grow" type="submit">Enregistrer</button><button class="btn danger" type="button" data-act="del-item" data-id="'+esc(iid)+'">Retirer de la liste</button></div></form>';
+  openSheet('Modifier la ligne',b,false);
+}
+function pickSheet(hid){
+  openSheet('Ajouter du matériel','<input id="pq" type="search" class="search" placeholder="Rechercher dans l\'inventaire" aria-label="Rechercher dans l\'inventaire"><div class="pick" id="pickList"></div>'+
+    '<div class="actions"><button class="btn grow" data-act="pick-new">Nouveau matériel</button><button class="btn pri grow" data-act="close">Terminé</button></div>',false);
+  pickCtx={hikeId:hid,q:''};
+  refreshPick();
+}
+function refreshPick(){
+  var box=$('#pickList');if(!box||!pickCtx)return;
+  var h=state.hikes[pickCtx.hikeId];if(!h){closeSheet();return}
+  var q=pickCtx.q.trim().toLowerCase();
+  var list=Object.keys(state.gear).map(function(k){return state.gear[k]}).filter(function(g){return !q||g.name.toLowerCase().indexOf(q)>=0||g.cat.toLowerCase().indexOf(q)>=0}).sort(function(a,b){return a.name.localeCompare(b.name,'fr')});
+  if(!list.length){box.innerHTML='<p class="mute" style="margin:12px 0">'+(Object.keys(state.gear).length?'Aucun résultat.':'L\'inventaire est vide. Crée un premier objet avec « Nouveau matériel ».')+'</p>';return}
+  var groups={};list.forEach(function(g){var k=CATS.indexOf(g.cat)<0?'Divers':g.cat;(groups[k]=groups[k]||[]).push(g)});
+  var out='';
+  CATS.forEach(function(cat,ix){
+    var g=groups[cat];if(!g)return;
+    out+='<div class="group"><div class="group-h"><i class="dot" style="background:var(--c'+ix+')"></i><h3>'+esc(cat)+'</h3></div>';
+    g.forEach(function(x){
+      var n=0;h.items.forEach(function(i){if(i.gearId===x.id)n+=i.qty||1});
+      out+='<div class="row"><div class="rt" style="cursor:default"><span class="rn">'+esc(x.name)+(n?'<span class="qty">dans la liste ×'+n+'</span>':'')+'</span><span class="rm mono">'+fmtW(x.g)+' · '+esc(kindLabel(x.kind))+'</span></div>'+
+        '<button class="btn sm add" data-act="pick-add" data-id="'+esc(x.id)+'" aria-label="Ajouter '+esc(x.name)+'">+ Ajouter</button></div>';
+    });
+    out+='</div>';
+  });
+  box.innerHTML=out;
+}
+function shareSheet(hid){
+  var h=state.hikes[hid];if(!h)return;
+  var c=compute(h),L=[];
+  L.push(h.name+' ('+fmtDate(h.date)+(h.place?', '+h.place:'')+')');
+  if(h.stats)L.push(fmt(h.stats.km,1)+' km'+(h.stats.up!=null?', D+ '+fmt(h.stats.up,0)+' m':''));
+  function block(title,list,b){
+    L.push('');L.push(title+' : '+fmtW(b.pack)+' (base '+fmtW(b.base)+', consommables '+fmtW(b.conso)+')');
+    CATS.forEach(function(cat){
+      var g=list.filter(function(i){return (CATS.indexOf(i.cat)<0?'Divers':i.cat)===cat});
+      if(!g.length)return;L.push('  '+cat);
+      g.forEach(function(i){L.push('   - '+i.name+((i.qty||1)>1?' ×'+i.qty:'')+' : '+fmtW((i.g||0)*(i.qty||1))+(i.kind==='worn'?' (sur soi)':''))});
+    });
+  }
+  h.people.forEach(function(p){block(p.name,h.items.filter(function(i){return i.who===p.id}),c.per[p.id])});
+  var rest=h.items.filter(function(i){return !i.who||!c.per[i.who]});
+  if(rest.length)block('À répartir',rest,c.none);
+  var text=L.join('\n');
+  openSheet('Copier la liste','<div class="form"><textarea id="shareTxt" readonly rows="10" style="min-height:220px;font:13px/1.4 var(--mono)">'+esc(text)+'</textarea><div class="actions"><button class="btn pri grow" data-act="copy-share">Copier le texte</button></div></div>',false);
+}
+
+/* ---------- actions ---------- */
+function addPickItem(hid,gid){
+  var g=state.gear[gid];if(!g)return;
+  mutateHike(hid,function(h){
+    var ex=h.items.filter(function(i){return i.gearId===gid})[0];
+    if(ex)ex.qty=(ex.qty||1)+1;
+    else h.items.push({id:uid(),gearId:g.id,name:g.name,cat:g.cat,g:g.g,qty:1,kind:g.kind,who:'',packed:false});
+  },['items']);
+}
+function seedGear(){
+  if(!db||!canWrite)return;
+  toast('Ajout de l\'équipement type…');
+  (async function(){
+    try{
+      for(var k=0;k<SEED.length;k++){
+        var s=SEED[k],id=uid();
+        await db.doc('gear/'+id).set({name:s[0],g:s[1],cat:CATS[s[2]],kind:s[3]});
+        await new Promise(function(r){setTimeout(r,90)});
+      }
+      toast('Équipement type ajouté. Ajuste les poids selon ton matériel.');
+    }catch(e){toast(errMsg(e))}
+  })();
+}
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-act]');if(!t)return;
+  var a=t.dataset.act,id=t.dataset.id,hid=currentHikeId();
+  if(a==='pack'||a==='who')return; /* gérés par change */
+  switch(a){
+    case 'close':closeSheet();break;
+    case 'account':accountSheet();break;
+    case 'signout':signOut();break;
+    case 'login-reset':state.codeSent=false;render();break;
+    case 'new-hike':hikeSheet(null);break;
+    case 'edit-hike':hikeSheet(hid);break;
+    case 'new-person':personSheet(hid,null);break;
+    case 'edit-person':personSheet(hid,id);break;
+    case 'edit-item':itemSheet(hid,id);break;
+    case 'pick':pickSheet(hid);break;
+    case 'pick-add':addPickItem(pickCtx.hikeId,id);break;
+    case 'pick-new':gearSheet(null,pickCtx&&pickCtx.hikeId);break;
+    case 'share':shareSheet(hid);break;
+    case 'gear-new':gearSheet(null,null);break;
+    case 'gear-edit':gearSheet(id,null);break;
+    case 'seed':seedGear();break;
+    case 'filter':state.filter=id;render();break;
+    case 'balance':
+      mutateHike(hid,function(h){if(!balance(h,false))toast('Rien à répartir : tout est déjà attribué.')},['items']);break;
+    case 'reset-assign':
+      mutateHike(hid,function(h){h.items.forEach(function(i){if(i.kind!=='worn')i.who=''})},['items']);break;
+    case 'copy-share':
+      var ta=$('#shareTxt');
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(ta.value).then(function(){toast('Liste copiée.')},function(){ta.select();toast('Sélectionne le texte et copie-le.')});
+      }else{ta.select();toast('Sélectionne le texte et copie-le.')}
+      break;
+    case 'del-hike':case 'del-person':case 'del-item':case 'del-gear':
+      if(!t.dataset.armed){
+        t.dataset.armed='1';t.textContent=t.dataset.arm||'Confirmer la suppression';
+        setTimeout(function(){if(t.isConnected&&!t.dataset.arm===false){t.dataset.armed='';t.textContent=t.dataset.arm==='Retirer ?'?'×':'Supprimer'}},4000);
+        break;
+      }
+      if(a==='del-hike'){
+        enqueue('hikes/'+id,function(){return db.doc('hikes/'+id).delete()});
+        delete state.hikes[id];closeSheet();location.hash='sorties';render();
+      }else if(a==='del-gear'){
+        enqueue('gear/'+id,function(){return db.doc('gear/'+id).delete()});
+        delete state.gear[id];closeSheet();render();
+      }else if(a==='del-person'){
+        closeSheet();mutateHike(hid,function(h){h.people=h.people.filter(function(p){return p.id!==id});h.items.forEach(function(i){if(i.who===id)i.who=''})},['people','items']);
+        if(state.filter===id)state.filter='all';
+      }else{
+        closeSheet();mutateHike(hid,function(h){h.items=h.items.filter(function(i){return i.id!==id})},['items']);
+      }
+      break;
+  }
+});
+document.addEventListener('change',function(e){
+  var t=e.target,hid=currentHikeId();
+  if(t.id==='gpxIn'){importGpx(t);return}
+  if(!t.dataset||!t.dataset.act)return;
+  if(t.dataset.act==='pack'){var v=t.checked;mutateHike(hid,function(h){h.items.forEach(function(i){if(i.id===t.dataset.id)i.packed=v})},['items'])}
+  if(t.dataset.act==='who'){var w=t.value;mutateHike(hid,function(h){h.items.forEach(function(i){if(i.id===t.dataset.id)i.who=w})},['items'])}
+});
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.id==='q'){state.q=t.value;var l=$('#gearList');if(l)l.innerHTML=gearListHtml()}
+  if(t.id==='pq'&&pickCtx){pickCtx.q=t.value;refreshPick()}
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSheet()});
+document.addEventListener('submit',function(e){
+  var f=e.target;if(!f.dataset||!f.dataset.form)return;
+  e.preventDefault();
+  var d=new FormData(f),kind=f.dataset.form,id=f.dataset.id,hid=f.dataset.hike;
+  if(kind==='login-email'){sendCode(String(d.get('email')).trim());return}
+  if(kind==='login-code'){verifyCode(String(d.get('code')).trim());return}
+  if(!db){toast('Connexion nécessaire pour modifier.');return}
+  if(kind==='hike'){
+    var name=String(d.get('name')).trim();if(!name)return;
+    var tp=num(d.get('target'));tp=tp?Math.min(50,Math.max(5,Math.round(tp))):20;
+    if(id){
+      closeSheet();
+      mutateHike(id,function(h){h.name=name;h.date=String(d.get('date'));h.place=String(d.get('place')).trim();h.notes=String(d.get('notes')).trim();h.targetPct=tp},['name','date','place','notes','targetPct']);
+    }else{
+      var nid=uid(),doc={name:name,date:String(d.get('date')),place:String(d.get('place')).trim(),notes:String(d.get('notes')).trim(),targetPct:tp,stats:null,profile:[],route:[],people:[],items:[],createdAt:Date.now()};
+      var src=state.hikes[d.get('copy')];
+      if(src){
+        var map={};
+        src.people.forEach(function(p){var np={id:uid(),name:p.name,kg:p.kg||null};map[p.id]=np.id;doc.people.push(np)});
+        src.items.forEach(function(i){var c=Object.assign({},i);c.id=uid();c.packed=false;c.who=map[i.who]||'';doc.items.push(c)});
+      }
+      String(d.get('people')||'').split(',').map(function(s){return s.trim()}).filter(Boolean).slice(0,12).forEach(function(n){
+        if(!doc.people.some(function(p){return p.name.toLowerCase()===n.toLowerCase()}))doc.people.push({id:uid(),name:n.slice(0,40),kg:null});
+      });
+      state.hikes[nid]=Object.assign({id:nid},doc);
+      enqueue('hikes/'+nid,function(){return db.doc('hikes/'+nid).set(doc)});
+      closeSheet();location.hash='sortie-'+nid;render();
+    }
+  }else if(kind==='person'){
+    var pn=String(d.get('name')).trim();if(!pn)return;var kg=num(d.get('kg'));
+    closeSheet();
+    mutateHike(hid,function(h){
+      if(id){h.people.forEach(function(p){if(p.id===id){p.name=pn;p.kg=kg}})}
+      else h.people.push({id:uid(),name:pn,kg:kg});
+    },['people']);
+  }else if(kind==='gear'){
+    var gname=String(d.get('name')).trim(),gw=num(d.get('g'));if(!gname||gw==null)return;
+    var g={id:id||uid(),name:gname,g:gw,cat:String(d.get('cat')),kind:String(d.get('kind'))};
+    state.gear[g.id]=g;saveGear(g);
+    if(hid&&!id){closeSheet();pickCtx=null;addPickItem(hid,g.id);toast('Ajouté à la sortie et à l\'inventaire.')}
+    else{
+      closeSheet();render();
+      if(id)toast('Inventaire mis à jour. Les sorties déjà composées gardent leur poids.');
+    }
+    refreshPick();
+  }else if(kind==='item'){
+    var ig=num(d.get('g')),iq=Math.max(1,Math.round(num(d.get('qty'))||1)),iw=String(d.get('who'));
+    if(ig==null)return;
+    closeSheet();
+    mutateHike(hid,function(h){h.items.forEach(function(i){if(i.id===id){i.g=ig;i.qty=iq;i.who=iw}})},['items']);
+  }
+});
+function importGpx(input){
+  var file=input.files&&input.files[0],hid=currentHikeId();if(!file||!hid)return;
+  if(file.size>25*1024*1024){toast('Fichier trop volumineux (25 Mo maximum).');input.value='';return}
+  file.text().then(function(txt){
+    var r=parseGpx(txt);
+    mutateHike(hid,function(h){
+      h.stats=r.stats;h.profile=r.profile;h.route=r.route;
+      if(r.date)h.date=r.date;
+    },['stats','profile','route','date']);
+    toast('Trace importée : '+fmt(r.stats.km,1)+' km'+(r.stats.up!=null?', D+ '+fmt(r.stats.up,0)+' m':'')+'.');
+  }).catch(function(err){toast(err&&err.message?err.message:'Ce fichier n\'a pas pu être lu.')});
+  input.value='';
+}
+
+/* ---------- données (Supabase) ---------- */
+var CFG=window.GRAMME_CONFIG||{};
+var sb=null,subscribed=false,unsubs=[],userEmail='';
+var CACHE_KEY='gramme-cache-v1';
+
+function makeDb(client){
+  return {
+    collection:function(c){
+      return {onSnapshot:function(next,err){
+        var rows={},dead=false;
+        function emit(){next({docs:Object.keys(rows).map(function(id){return {id:id,data:function(){return rows[id]}}})})}
+        client.from(c).select('id,data').then(function(r){
+          if(dead)return;
+          if(r.error){if(err)err(r.error);return}
+          (r.data||[]).forEach(function(x){rows[x.id]=x.data});emit();
+        },function(e){if(err&&!dead)err(e)});
+        var ch=client.channel('rt-'+c).on('postgres_changes',{event:'*',schema:'public',table:c},function(p){
+          if(p.eventType==='DELETE'){if(p.old)delete rows[p.old.id]}
+          else if(p.new){rows[p.new.id]=p.new.data}
+          emit();
+        }).subscribe();
+        return function(){dead=true;client.removeChannel(ch)};
+      }};
+    },
+    doc:function(path){
+      var parts=path.split('/'),c=parts[0],id=parts[1];
+      function chk(r){if(r&&r.error)throw r.error}
+      return {
+        set:function(d){return client.from(c).upsert({id:id,data:d,updated_at:new Date().toISOString()}).then(chk)},
+        update:function(d){return client.rpc('merge_doc',{tbl:c,doc_id:id,patch:d}).then(chk)},
+        delete:function(){return client.from(c).delete().eq('id',id).then(chk)}
+      };
+    }
+  };
+}
+function loadCache(){
+  try{var c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
+    if(c){state.gear=c.gear||{};state.hikes=c.hikes||{};state.ready.gear=true;state.ready.hikes=true;return true}}catch(e){}
+  return false;
+}
+function saveCache(){try{localStorage.setItem(CACHE_KEY,JSON.stringify({gear:state.gear,hikes:state.hikes}))}catch(e){}}
+var slowT=null;
+function ready(k){state.ready[k]=true;if(state.ready.gear&&state.ready.hikes)clearTimeout(slowT)}
+function subscribe(){
+  if(subscribed)return;subscribed=true;
+  clearTimeout(slowT);slowT=setTimeout(function(){state.slow=true;render()},10000);
+  unsubs.push(db.collection('gear').onSnapshot(function(snap){
+    var m={};snap.docs.forEach(function(x){var v=x.data();if(v)m[x.id]=Object.assign({id:x.id},v)});
+    state.gear=m;ready('gear');saveCache();scheduleRender();
+  },function(){ready('gear');scheduleRender()}));
+  unsubs.push(db.collection('hikes').onSnapshot(function(snap){
+    var m={};snap.docs.forEach(function(x){
+      var v=x.data();if(!v)return;
+      if(inflight['hikes/'+x.id]&&state.hikes[x.id]){m[x.id]=state.hikes[x.id];return}
+      var o=Object.assign({id:x.id},v);o.people=o.people||[];o.items=o.items||[];m[x.id]=o;
+    });
+    state.hikes=m;ready('hikes');saveCache();scheduleRender();
+  },function(){ready('hikes');scheduleRender()}));
+}
+function teardown(){
+  unsubs.forEach(function(u){try{u()}catch(e){}});unsubs=[];subscribed=false;
+  state.gear={};state.hikes={};state.ready={gear:false,hikes:false};state.slow=false;
+  try{localStorage.removeItem(CACHE_KEY)}catch(e){}
+}
+function enter(sess){
+  userEmail=(sess&&sess.user&&sess.user.email)||'';
+  state.auth='in';loadCache();render();subscribe();
+  sb.rpc('is_allowed').then(function(r){
+    if(!r.error&&r.data===false){state.auth='denied';teardown();render()}
+  },function(){});
+}
+function sendCode(email){
+  if(!email)return;
+  state.loginEmail=email;
+  sb.auth.signInWithOtp({email:email,options:{shouldCreateUser:true}}).then(function(r){
+    if(r.error){toast(/rate|seconds|limit/i.test(r.error.message||'')?'Trop de demandes : attends une minute avant de réessayer.':'Envoi impossible : '+(r.error.message||'réessaie.'));return}
+    state.codeSent=true;render();
+  },function(){toast('Envoi impossible : vérifie ta connexion.')});
+}
+function verifyCode(code){
+  sb.auth.verifyOtp({email:state.loginEmail,token:code,type:'email'}).then(function(r){
+    if(r.error||!r.data||!r.data.session){toast('Code incorrect ou expiré.');return}
+    state.codeSent=false;enter(r.data.session);
+  },function(){toast('Vérification impossible : vérifie ta connexion.')});
+}
+function signOut(){
+  closeSheet();
+  sb.auth.signOut().then(function(){},function(){}).then(function(){
+    teardown();state.auth='out';state.codeSent=false;render();
+  });
+}
+function accountSheet(){
+  openSheet('Compte','<div class="form"><p>Connecté avec <b>'+esc(userEmail)+'</b></p>'+
+    '<p class="mute small">Pour inviter un ami, ajoute son adresse e-mail dans la table allowed_emails de Supabase (voir le README).</p>'+
+    '<div class="actions"><button class="btn danger grow" data-act="signout">Se déconnecter</button></div></div>',false);
+}
+
+/* ---------- démarrage ---------- */
+window.addEventListener('hashchange',function(){closeSheet();render();window.scrollTo(0,0)});
+window.addEventListener('online',function(){render()});
+window.addEventListener('offline',function(){render()});
+function boot(){
+  if(!CFG.supabaseUrl||!CFG.supabaseKey||!window.supabase){state.auth='setup';render();return}
+  sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+  db=makeDb(sb);
+  sb.auth.onAuthStateChange(function(ev){
+    if(ev==='SIGNED_OUT'&&state.auth==='in'){teardown();state.auth='out';render()}
+  });
+  sb.auth.getSession().then(function(r){
+    var sess=r&&r.data&&r.data.session;
+    if(sess)enter(sess);else{state.auth='out';render()}
+  },function(){state.auth='out';render()});
+}
+render();
+boot();
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});
+}
+})();
+</script>
+</body>
+</html>
