@@ -117,7 +117,7 @@ label.f input,label.f select,label.f textarea{font-weight:400;color:var(--ink);f
 .plate.open{border-style:dashed;border-color:var(--mute);cursor:default}
 .plate .who{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .plate .who b{font:800 22px var(--display);letter-spacing:.04em;text-transform:uppercase}
-.plate .big{font:900 84px/.9 var(--display);letter-spacing:-.01em;margin-top:6px;font-variant-numeric:tabular-nums}
+.plate .big{font:900 64px/.9 var(--display);letter-spacing:-.01em;margin-top:6px;font-variant-numeric:tabular-nums}
 .plate .big small{font-size:28px;font-weight:800;color:var(--acc);margin-left:5px;letter-spacing:.02em}
 .plate .sub{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:13px;color:var(--mute)}
 .bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--line);margin-top:10px}
@@ -158,7 +158,7 @@ label.f input,label.f select,label.f textarea{font-weight:400;color:var(--ink);f
 body.ro .act{display:none !important}
 @media (max-width:420px){
   .tiles{grid-template-columns:repeat(2,1fr)}
-  .plate .big{font-size:76px}
+  .plate .big{font-size:58px}
   h1{font-size:40px}
 }
 @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto !important;transition:none !important;animation:none !important}}
@@ -183,6 +183,7 @@ body.ro .act{display:none !important}
 <nav class="nav" aria-label="Sections">
   <a href="#sorties" data-tab="sorties">Sorties</a>
   <a href="#materiel" data-tab="materiel">Matériel</a>
+  <a href="#sacs" data-tab="sacs">Sacs</a>
   <a href="#bilan" data-tab="bilan">Bilan</a>
 </nav>
 <div id="toast" role="status"></div>
@@ -207,9 +208,9 @@ var SEED=[
 
 /* ---------- état ---------- */
 var db=null, canWrite=true;
-var state={gear:{},hikes:{},ready:{gear:false,hikes:false},slow:false,auth:'boot',signupDone:false,loginEmail:'',filter:'all',q:''};
+var state={gear:{},bags:{},hikes:{},ready:{gear:false,hikes:false},slow:false,auth:'boot',signupDone:false,loginEmail:'',filter:'all',q:''};
 var inflight={};
-var pickCtx=null; /* {hikeId,q} quand la feuille d'ajout est ouverte */
+var pickCtx=null; /* {hikeId|bagId,q} quand la feuille d'ajout est ouverte */
 
 /* ---------- utilitaires ---------- */
 function $(s,r){return (r||document).querySelector(s)}
@@ -256,6 +257,31 @@ function isOwner(h){return !h.owner||h.owner===meMail()}
 function saveGear(g){
   if(!db)return;var d={name:g.name,g:g.g,cat:g.cat,kind:g.kind,owner:g.owner||meMail()};
   enqueue('gear/'+g.id,function(){return db.doc('gear/'+g.id).set(d)});
+}
+
+function saveBag(b){
+  if(!db)return;var d={type:'bag',name:b.name,note:b.note||'',items:b.items||[],owner:b.owner||meMail()};
+  enqueue('gear/'+b.id,function(){return db.doc('gear/'+b.id).set(d)});
+}
+function mutateBag(id,fn){
+  var cur=state.bags[id];if(!cur||!canWrite)return;
+  var b=structuredClone(cur);fn(b);state.bags[id]=b;render();refreshPick();saveBag(b);
+}
+function bagStats(b){
+  var st={base:0,conso:0,worn:0,pack:0,n:0,byCat:{}};
+  (b.items||[]).forEach(function(it){
+    var g=state.gear[it.gid];if(!g)return;var w=(g.g||0)*(it.qty||1);
+    if(g.kind==='worn')st.worn+=w;
+    else{if(g.kind==='consumable')st.conso+=w;else st.base+=w;st.byCat[g.cat]=(st.byCat[g.cat]||0)+w}
+    st.n++;
+  });
+  st.pack=st.base+st.conso;return st;
+}
+function addToBag(bid,gid){
+  mutateBag(bid,function(b){
+    var ex=b.items.filter(function(i){return i.gid===gid})[0];
+    if(ex)ex.qty=(ex.qty||1)+1;else b.items.push({gid:gid,qty:1});
+  });
 }
 
 /* ---------- calculs ---------- */
@@ -512,6 +538,8 @@ function route(){
   var h=(location.hash||'').replace(/^#/,'');
   if(h.indexOf('sortie-')===0)return {name:'sortie',tab:'sorties',id:h.slice(7)};
   if(h.indexOf('rejoindre-')===0)return {name:'sorties',tab:'sorties'};
+  if(h.indexOf('sac-')===0)return {name:'sac',tab:'sacs',id:h.slice(4)};
+  if(h==='sacs')return {name:'sacs',tab:'sacs'};
   if(h==='materiel')return {name:'materiel',tab:'materiel'};
   if(h==='bilan')return {name:'bilan',tab:'bilan'};
   return {name:'sorties',tab:'sorties'};
@@ -589,14 +617,14 @@ function viewHike(id){
       if(ratio!=null){var over=ratio>target;pill='<span class="pill '+(over?'warn':'ok')+'">'+fmt(ratio,0)+' % du poids du corps'+(over?', au-dessus de '+target+' %':'')+'</span>'}
       out+='<button class="plate act" data-act="edit-person" data-id="'+esc(p.id)+'" aria-label="Modifier '+esc(p.name)+'">'+
         '<div class="who"><b>'+esc(p.name)+'</b><span class="mute small">'+(p.kg?fmt(p.kg,0)+' kg':'')+'</span></div>'+
-        '<div class="big">'+fmt(b.pack/1000,1)+'<small>kg</small></div>'+
+        '<div class="big">'+fmt(b.pack/1000,2)+'<small>kg</small></div>'+
         '<div class="sub"><span>Base '+fmtW(b.base)+'</span><span>Conso. '+fmtW(b.conso)+'</span>'+(b.worn?'<span>Sur soi '+fmtW(b.worn)+'</span>':'')+'</div>'+
         catBar(b.byCat)+pill+'</button>';
     });
 
     if(c.none.pack>0){
       var nn=c.none;
-      out+='<div class="plate open"><div class="who"><b>À répartir</b></div><div class="big">'+fmt(nn.pack/1000,1)+'<small>kg</small></div>'+
+      out+='<div class="plate open"><div class="who"><b>À répartir</b></div><div class="big">'+fmt(nn.pack/1000,2)+'<small>kg</small></div>'+
         '<div class="sub"><span>Base '+fmtW(nn.base)+'</span><span>Conso. '+fmtW(nn.conso)+'</span></div>'+catBar(nn.byCat)+'</div>';
     }
     out+='</div>';
@@ -616,6 +644,7 @@ function viewHike(id){
           body+='<div class="row" style="justify-content:space-between;padding:4px 0;gap:8px"><span>'+(i.packed?'✓ ':'')+esc(i.name)+(i.qty>1?' ×'+i.qty:'')+(i.kind==='worn'?' <span class="mute small">(sur soi)</span>':i.kind==='consumable'?' <span class="mute small">(conso.)</span>':'')+'</span><span class="mono small">'+fmtW((i.g||0)*(i.qty||1))+'</span></div>';
         });
       });
+      body+='<div class="actions act" style="margin-top:10px"><button class="btn sm" data-act="load-bag" data-id="'+esc(p.id)+'">Ajouter un de mes sacs</button></div>';
       bags+='<details data-bag="'+esc(p.id)+'"'+((openBags[p.id]===undefined?isMe:openBags[p.id])?' open':'')+' class="card" style="margin-bottom:8px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;min-height:32px;align-items:center"><b>🎒 '+(isMe?'Mon sac ('+esc(p.name)+')':'Sac de '+esc(p.name))+'</b><span class="mono small">'+fmtW(b.pack)+(b.worn?' + '+fmtW(b.worn)+' sur soi':'')+'</span></summary>'+body+'</details>';
     });
     bags+='</div>';
@@ -691,13 +720,67 @@ function viewGear(){
   var tb=0,tc=0,tw=0;
   Object.keys(state.gear).forEach(function(k){var x=state.gear[k],w=x.g||0;if(x.kind==='worn')tw+=w;else if(x.kind==='consumable')tc+=w;else tb+=w});
   var sum='<div class="card" style="margin-bottom:12px"><div class="mute small">Poids total du sac, tout l\'inventaire</div>'+
-    '<div class="plate" style="border:0;padding:0;background:none;cursor:default"><div class="big">'+fmt((tb+tc)/1000,1)+'<small>kg</small></div></div>'+
+    '<div class="plate" style="border:0;padding:0;background:none;cursor:default"><div class="big">'+fmt((tb+tc)/1000,2)+'<small>kg</small></div></div>'+
     '<div class="tiles" style="margin-top:10px;grid-template-columns:repeat(3,1fr)">'+
     '<div class="tile"><b>'+fmt(tb/1000,1)+'</b><span>kg de base</span></div>'+
     '<div class="tile"><b>'+fmt(tc/1000,1)+'</b><span>kg consommables</span></div>'+
     '<div class="tile"><b>'+fmt(tw/1000,1)+'</b><span>kg sur soi</span></div></div></div>';
   return head+sum+'<input id="q" class="search" type="search" placeholder="Rechercher un objet ou une catégorie" aria-label="Rechercher dans le matériel" value="'+esc(state.q)+'"><div id="gearList">'+gearListHtml()+'</div>'+
     '<p class="mute small" style="margin-top:14px">Les poids sont en grammes. Le poids d\'un objet peut être ajusté dans une sortie sans toucher à l\'inventaire.</p>';
+}
+function viewBags(){
+  var list=Object.keys(state.bags).map(function(k){return state.bags[k]}).sort(function(a,b){return a.name.localeCompare(b.name,'fr')});
+  var head='<div class="head"><h1>Sacs</h1><button class="btn pri act" data-act="bag-new">Nouveau sac</button></div>';
+  if(!list.length)return head+emptyBlock('Aucun sac pour le moment','Crée un sac par type de sortie (week-end léger, itinérance en tente…) et compose-le avec ton matériel. Tu pourras ensuite le charger dans une sortie en une touche.','<button class="btn pri act" data-act="bag-new">Créer un sac</button>');
+  return head+'<ul class="cards">'+list.map(function(b){
+    var st=bagStats(b);
+    return '<li><a class="hcard" href="#sac-'+esc(b.id)+'"><div class="t"><span class="slash" aria-hidden="true"></span><h3>'+esc(b.name)+'</h3></div>'+
+      '<div class="l"><span class="mono">'+fmtW(st.pack)+'</span><span class="mute">'+st.n+' objet'+(st.n>1?'s':'')+'</span></div>'+catBar(st.byCat)+'</a></li>';
+  }).join('')+'</ul><p class="mute small" style="margin-top:14px">Le matériel vient de ton inventaire (onglet Matériel). Ajoute-le ou modifie-le là-bas, les sacs se mettent à jour.</p>';
+}
+function viewBag(id){
+  var b=state.bags[id];
+  if(!b)return '<a class="back-link" href="#sacs">← Sacs</a>'+emptyBlock('Sac introuvable','Il a peut-être été supprimé.','<a class="btn" href="#sacs">Retour aux sacs</a>');
+  var st=bagStats(b),out='<a class="back-link" href="#sacs">← Sacs</a>';
+  out+='<div class="head" style="margin-top:6px"><div><h1>'+esc(b.name)+'</h1>'+(b.note?'<div class="mute small">'+esc(b.note)+'</div>':'')+'</div>'+
+    '<div class="actions" style="margin:0"><button class="btn sm act" data-act="bag-edit">Modifier</button><button class="btn sm act" data-act="bag-dup">Dupliquer</button></div></div>';
+  out+='<div class="card" style="margin-bottom:12px"><div class="mute small">Poids du sac</div><div class="plate" style="border:0;padding:0;background:none;cursor:default"><div class="big">'+fmt(st.pack/1000,2)+'<small>kg</small></div></div>'+
+    '<div class="tiles" style="margin-top:10px;grid-template-columns:repeat(3,1fr)"><div class="tile"><b>'+fmt(st.base/1000,1)+'</b><span>kg de base</span></div><div class="tile"><b>'+fmt(st.conso/1000,1)+'</b><span>kg consommables</span></div><div class="tile"><b>'+fmt(st.worn/1000,1)+'</b><span>kg sur soi</span></div></div>'+catBar(st.byCat)+'</div>';
+  out+='<section class="sec" aria-labelledby="s-bm"><div class="sec-h"><h2 id="s-bm">Matériel du sac</h2><button class="btn pri sm act" data-act="pick">Ajouter du matériel</button></div>';
+  var items=(b.items||[]).filter(function(i){return state.gear[i.gid]});
+  if(!items.length)out+='<div class="card empty"><p class="mute">Le sac est vide. Pioche dans ton inventaire ou crée du matériel à la volée.</p></div>';
+  else{
+    var groups={};items.forEach(function(i){var g=state.gear[i.gid],k=CATS.indexOf(g.cat)<0?'Divers':g.cat;(groups[k]=groups[k]||[]).push(i)});
+    CATS.concat(['Divers']).forEach(function(cat,ix){
+      var g=groups[cat];if(!g)return;
+      var sub=g.reduce(function(a,i){return a+(state.gear[i.gid].g||0)*(i.qty||1)},0);
+      out+='<div class="group"><div class="group-h"><i class="dot" style="background:var(--c'+Math.min(ix,9)+')"></i><h3>'+esc(cat)+'</h3><span class="mono small">'+fmtW(sub)+'</span></div>';
+      g.forEach(function(i){var x=state.gear[i.gid];
+        out+='<div class="row"><div class="rt" style="cursor:default"><span class="rn">'+esc(x.name)+'</span><span class="rm mono">'+fmtW((x.g||0)*(i.qty||1))+' · '+esc(kindLabel(x.kind))+'</span></div>'+
+          '<button class="btn sm act" data-act="bag-qty" data-id="'+esc(i.gid)+'" data-d="-1" aria-label="Retirer un exemplaire">−</button><span class="mono" style="min-width:22px;text-align:center">'+(i.qty||1)+'</span>'+
+          '<button class="btn sm act" data-act="bag-qty" data-id="'+esc(i.gid)+'" data-d="1" aria-label="Ajouter un exemplaire">+</button>'+
+          '<button class="btn sm danger act" data-act="bag-rm" data-id="'+esc(i.gid)+'" aria-label="Retirer '+esc(x.name)+' du sac">×</button></div>';
+      });
+      out+='</div>';
+    });
+  }
+  return out+'</section>';
+}
+function bagSheet(id){
+  var b=id?state.bags[id]:null;
+  var f='<form class="form" data-form="bag" data-id="'+esc(id||'')+'">'+
+    field('b-name','Nom du sac','<input id="b-name" name="name" required maxlength="60" placeholder="Itinérance en tente" value="'+esc(b?b.name:'')+'">')+
+    field('b-note','Note (facultatif)','<input id="b-note" name="note" maxlength="120" placeholder="Pour 2 à 4 nuits" value="'+esc(b?b.note||'':'')+'">')+
+    '<div class="actions"><button class="btn pri grow" type="submit">'+(b?'Enregistrer':'Créer le sac')+'</button>'+(b?'<button class="btn danger" type="button" data-act="del-bag" data-id="'+esc(id)+'">Supprimer</button>':'')+'</div></form>';
+  openSheet(b?'Modifier le sac':'Nouveau sac',f);
+}
+function loadBagSheet(hid,pid){
+  var h=state.hikes[hid],p=h&&h.people.filter(function(x){return x.id===pid})[0];if(!p)return;
+  var list=Object.keys(state.bags).map(function(k){return state.bags[k]}).sort(function(a,b){return a.name.localeCompare(b.name,'fr')});
+  var body=!list.length?'<p class="mute">Tu n\'as pas encore de sac. Crée-en un dans l\'onglet Sacs, puis reviens le charger ici.</p><div class="actions"><a class="btn pri grow" href="#sacs" data-act="close">Aller aux sacs</a></div>'
+    :'<p class="mute small">Le contenu du sac choisi est ajouté au sac de '+esc(p.name)+'.</p>'+list.map(function(b){var st=bagStats(b);
+      return '<div class="row"><div class="rt" style="cursor:default"><span class="rn">'+esc(b.name)+'</span><span class="rm mono">'+fmtW(st.pack)+' · '+st.n+' objet'+(st.n>1?'s':'')+'</span></div><button class="btn sm pri act" data-act="load-bag-do" data-id="'+esc(b.id)+'" data-p="'+esc(pid)+'">Charger</button></div>'}).join('');
+  openSheet('Charger un de mes sacs',body);
 }
 function viewBilan(){
   var hikes=Object.keys(state.hikes).map(function(k){return state.hikes[k]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
@@ -759,6 +842,8 @@ function render(){
   }
   var html;
   if(r.name==='sortie')html=viewHike(r.id);
+  else if(r.name==='sac')html=viewBag(r.id);
+  else if(r.name==='sacs')html=viewBags();
   else if(r.name==='materiel')html=viewGear();
   else if(r.name==='bilan')html=viewBilan();
   else html=viewHikes();
@@ -843,6 +928,8 @@ function joinSheet(hid){
   var b='<form class="form" data-form="join" data-hike="'+esc(hid)+'"><p class="mute small">Tu rejoins <b>'+esc(h.name)+'</b>. Ton matériel coché est ajouté à ton sac pour la répartition.</p>'+
     field('j-name','Ton prénom','<input id="j-name" name="name" required maxlength="40" value="'+esc(meMail().split('@')[0])+'">')+
     field('j-kg','Poids du corps en kg (facultatif)','<input id="j-kg" name="kg" type="number" inputmode="decimal" min="20" max="250" step="any">');
+  var bl=Object.keys(state.bags).map(function(k){return state.bags[k]});
+  if(gl.length&&bl.length)b+=field('j-bag','Partir avec un de mes sacs','<select id="j-bag" name="bag" data-act="join-bag"><option value="">Choisir le matériel à la main</option>'+bl.map(function(x){return '<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>'}).join('')+'</select>');
   if(gl.length){
     b+='<div class="sec-h" style="margin:8px 0 0"><h3>Mon matériel</h3><button class="btn sm ghost" type="button" data-act="join-all" data-val="0">Tout décocher</button></div><div id="j-list">';
     gl.forEach(function(g){b+='<label class="row" style="gap:10px;align-items:center;min-height:40px"><input type="checkbox" name="gear" value="'+esc(g.id)+'" checked style="width:auto;min-height:0"><span style="flex:1">'+esc(g.name)+'</span><span class="mono small">'+fmtW(g.g)+'</span></label>'});
@@ -851,15 +938,15 @@ function joinSheet(hid){
   b+='<div class="actions"><button class="btn pri grow" type="submit">Rejoindre la sortie</button></div></form>';
   openSheet('Rejoindre la sortie',b);
 }
-function gearSheet(gid,hid){
+function gearSheet(gid,hid,bid){
   var g=gid?state.gear[gid]:null;
-  var b='<form class="form" data-form="gear" data-id="'+esc(gid||'')+'" data-hike="'+esc(hid||'')+'">'+
+  var b='<form class="form" data-form="gear" data-id="'+esc(gid||'')+'" data-hike="'+esc(hid||'')+'" data-bag="'+esc(bid||'')+'">'+
     field('g-name','Nom','<input id="g-name" name="name" required maxlength="80" value="'+esc(g?g.name:'')+'">')+
     '<div class="two">'+field('g-w','Poids en g','<input id="g-w" name="g" type="number" inputmode="decimal" min="0" step="any" required value="'+(g?g.g:'')+'">')+
     field('g-cat','Catégorie','<select id="g-cat" name="cat">'+optList(CATS.map(function(c){return [c,c]}),g?g.cat:CATS[0])+'</select>')+'</div>'+
     field('g-kind','Type','<select id="g-kind" name="kind">'+optList(KINDS,g?g.kind:'carried')+'</select>')+
     '<p class="mute small">Dans le sac compte dans le poids de base. Consommable (eau, nourriture, gaz) s\'ajoute au poids total. Porté sur soi n\'entre dans aucun sac.</p>'+
-    '<div class="actions"><button class="btn pri grow" type="submit">'+(g?'Enregistrer':(hid?'Créer et ajouter à la sortie':'Ajouter à l\'inventaire'))+'</button>'+(g?'<button class="btn danger" type="button" data-act="del-gear" data-id="'+esc(gid)+'">Supprimer</button>':'')+'</div></form>';
+    '<div class="actions"><button class="btn pri grow" type="submit">'+(g?'Enregistrer':(hid?'Créer et ajouter à la sortie':(bid?'Créer et ajouter au sac':'Ajouter à l\'inventaire')))+'</button>'+(g?'<button class="btn danger" type="button" data-act="del-gear" data-id="'+esc(gid)+'">Supprimer</button>':'')+'</div></form>';
   openSheet(g?'Modifier le matériel':'Nouveau matériel',b);
 }
 function itemSheet(hid,iid){
@@ -873,15 +960,15 @@ function itemSheet(hid,iid){
     '<div class="actions"><button class="btn pri grow" type="submit">Enregistrer</button><button class="btn danger" type="button" data-act="del-item" data-id="'+esc(iid)+'">Retirer de la liste</button></div></form>';
   openSheet('Modifier la ligne',b,false);
 }
-function pickSheet(hid){
+function pickSheet(hid,bid){
   openSheet('Ajouter du matériel','<input id="pq" type="search" class="search" placeholder="Rechercher dans l\'inventaire" aria-label="Rechercher dans l\'inventaire"><div class="pick" id="pickList"></div>'+
-    '<div class="actions"><button class="btn grow" data-act="pick-new">Nouveau matériel</button><button class="btn pri grow" data-act="close">Terminé</button></div>',false);
-  pickCtx={hikeId:hid,q:''};
+    '<div class="actions">'+(bid?'<button class="btn grow" data-act="pick-add-all">Tout ajouter</button>':'')+'<button class="btn grow" data-act="pick-new">Nouveau matériel</button><button class="btn pri grow" data-act="close">Terminé</button></div>',false);
+  pickCtx={hikeId:bid?null:hid,bagId:bid||null,q:''};
   refreshPick();
 }
 function refreshPick(){
   var box=$('#pickList');if(!box||!pickCtx)return;
-  var h=state.hikes[pickCtx.hikeId];if(!h){closeSheet();return}
+  var h=pickCtx.bagId?state.bags[pickCtx.bagId]:state.hikes[pickCtx.hikeId];if(!h){closeSheet();return}
   var q=pickCtx.q.trim().toLowerCase();
   var list=Object.keys(state.gear).map(function(k){return state.gear[k]}).filter(function(g){return !q||g.name.toLowerCase().indexOf(q)>=0||g.cat.toLowerCase().indexOf(q)>=0}).sort(function(a,b){return a.name.localeCompare(b.name,'fr')});
   if(!list.length){box.innerHTML='<p class="mute" style="margin:12px 0">'+(Object.keys(state.gear).length?'Aucun résultat.':'L\'inventaire est vide. Crée un premier objet avec « Nouveau matériel ».')+'</p>';return}
@@ -891,8 +978,8 @@ function refreshPick(){
     var g=groups[cat];if(!g)return;
     out+='<div class="group"><div class="group-h"><i class="dot" style="background:var(--c'+ix+')"></i><h3>'+esc(cat)+'</h3></div>';
     g.forEach(function(x){
-      var n=0;h.items.forEach(function(i){if(i.gearId===x.id)n+=i.qty||1});
-      out+='<div class="row"><div class="rt" style="cursor:default"><span class="rn">'+esc(x.name)+(n?'<span class="qty">dans la liste ×'+n+'</span>':'')+'</span><span class="rm mono">'+fmtW(x.g)+' · '+esc(kindLabel(x.kind))+'</span></div>'+
+      var n=0;h.items.forEach(function(i){if((pickCtx.bagId?i.gid:i.gearId)===x.id)n+=i.qty||1});
+      out+='<div class="row"><div class="rt" style="cursor:default"><span class="rn">'+esc(x.name)+(n?'<span class="qty">'+(pickCtx.bagId?'dans le sac':'dans la liste')+' ×'+n+'</span>':'')+'</span><span class="rm mono">'+fmtW(x.g)+' · '+esc(kindLabel(x.kind))+'</span></div>'+
         '<button class="btn sm add" data-act="pick-add" data-id="'+esc(x.id)+'" aria-label="Ajouter '+esc(x.name)+'">+ Ajouter</button></div>';
     });
     out+='</div>';
@@ -955,9 +1042,39 @@ document.addEventListener('click',function(e){
     case 'new-person':personSheet(hid,null);break;
     case 'edit-person':personSheet(hid,id);break;
     case 'edit-item':itemSheet(hid,id);break;
-    case 'pick':pickSheet(hid);break;
-    case 'pick-add':addPickItem(pickCtx.hikeId,id);break;
-    case 'pick-new':gearSheet(null,pickCtx&&pickCtx.hikeId);break;
+    case 'pick':pickSheet(hid,route().name==='sac'?route().id:null);break;
+    case 'pick-add':if(pickCtx&&pickCtx.bagId)addToBag(pickCtx.bagId,id);else addPickItem(pickCtx.hikeId,id);break;
+    case 'pick-add-all':
+      if(!pickCtx||!pickCtx.bagId)break;
+      var pq=pickCtx.q.trim().toLowerCase(),pb=pickCtx.bagId;
+      mutateBag(pb,function(b){Object.keys(state.gear).forEach(function(k){var g=state.gear[k];
+        if(pq&&g.name.toLowerCase().indexOf(pq)<0&&g.cat.toLowerCase().indexOf(pq)<0)return;
+        if(!b.items.some(function(i){return i.gid===g.id}))b.items.push({gid:g.id,qty:1})})});
+      break;
+    case 'pick-new':gearSheet(null,pickCtx&&pickCtx.hikeId,pickCtx&&pickCtx.bagId);break;
+    case 'bag-new':bagSheet(null);break;
+    case 'bag-edit':bagSheet(route().id);break;
+    case 'bag-dup':
+      var sb0=state.bags[route().id];if(!sb0)break;
+      var nb2={id:'bag-'+uid(),name:sb0.name+' (copie)',note:sb0.note||'',items:structuredClone(sb0.items||[]),owner:meMail()};
+      state.bags[nb2.id]=nb2;saveBag(nb2);location.hash='sac-'+nb2.id;render();break;
+    case 'bag-qty':
+      var dq=parseInt(t.dataset.d,10);
+      mutateBag(route().id,function(b){b.items.forEach(function(i){if(i.gid===id)i.qty=Math.max(1,(i.qty||1)+dq)})});break;
+    case 'bag-rm':mutateBag(route().id,function(b){b.items=b.items.filter(function(i){return i.gid!==id})});break;
+    case 'load-bag':loadBagSheet(hid,id);break;
+    case 'load-bag-do':
+      var lb=state.bags[id],lp=t.dataset.p;if(!lb)break;
+      closeSheet();
+      mutateHike(hid,function(h){
+        (lb.items||[]).forEach(function(it){
+          var g=state.gear[it.gid];if(!g)return;
+          var ex=h.items.filter(function(x){return x.gearId===g.id&&x.who===lp})[0];
+          if(ex)ex.qty=(ex.qty||1)+(it.qty||1);
+          else h.items.push({id:uid(),gearId:g.id,name:g.name,cat:g.cat,g:g.g,qty:it.qty||1,kind:g.kind,who:lp,packed:false});
+        });
+      },['items']);
+      toast('Sac « '+lb.name+' » ajouté.');break;
     case 'share':shareSheet(hid);break;
     case 'invite':inviteSheet(hid);break;
     case 'invite-link':mutateHike(hid,function(h){h.joinToken=randTok()},['joinToken']);inviteSheet(hid);break;
@@ -1019,7 +1136,7 @@ document.addEventListener('click',function(e){
         navigator.clipboard.writeText(ta.value).then(function(){toast('Liste copiée.')},function(){ta.select();toast('Sélectionne le texte et copie-le.')});
       }else{ta.select();toast('Sélectionne le texte et copie-le.')}
       break;
-    case 'del-hike':case 'del-person':case 'del-item':case 'del-gear':
+    case 'del-hike':case 'del-person':case 'del-item':case 'del-gear':case 'del-bag':
       if(!t.dataset.armed){
         t.dataset.armed='1';t.textContent=t.dataset.arm||'Confirmer la suppression';
         setTimeout(function(){if(t.isConnected&&!t.dataset.arm===false){t.dataset.armed='';t.textContent=t.dataset.arm==='Retirer ?'?'×':'Supprimer'}},4000);
@@ -1028,6 +1145,9 @@ document.addEventListener('click',function(e){
       if(a==='del-hike'){
         enqueue('hikes/'+id,function(){return db.doc('hikes/'+id).delete()});
         delete state.hikes[id];closeSheet();location.hash='sorties';render();
+      }else if(a==='del-bag'){
+        enqueue('gear/'+id,function(){return db.doc('gear/'+id).delete()});
+        delete state.bags[id];closeSheet();location.hash='sacs';render();
       }else if(a==='del-gear'){
         enqueue('gear/'+id,function(){return db.doc('gear/'+id).delete()});
         delete state.gear[id];closeSheet();render();
@@ -1045,6 +1165,7 @@ document.addEventListener('change',function(e){
   if(t.id==='gpxIn'){importGpx(t);return}
   if(!t.dataset||!t.dataset.act)return;
   if(t.dataset.act==='pack'){var v=t.checked;mutateHike(hid,function(h){h.items.forEach(function(i){if(i.id===t.dataset.id)i.packed=v})},['items'])}
+  if(t.dataset.act==='join-bag'){var jbb=state.bags[t.value];if(jbb){var set={};(jbb.items||[]).forEach(function(i){set[i.gid]=1});document.querySelectorAll('#j-list input[type=checkbox]').forEach(function(c){c.checked=!!set[c.value]})}return}
   if(t.dataset.act==='nights'){var nv=parseInt(t.value,10);mutateHike(hid,function(h){h.nights=nv;h.camps=findCamps(h.track,nv)},['nights','camps'])}
   if(t.dataset.act==='who'){var w=t.value;mutateHike(hid,function(h){h.items.forEach(function(i){if(i.id===t.dataset.id)i.who=w})},['items'])}
 });
@@ -1057,7 +1178,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSheet()
 document.addEventListener('submit',function(e){
   var f=e.target;if(!f.dataset||!f.dataset.form)return;
   e.preventDefault();
-  var d=new FormData(f),kind=f.dataset.form,id=f.dataset.id,hid=f.dataset.hike;
+  var d=new FormData(f),kind=f.dataset.form,id=f.dataset.id,hid=f.dataset.hike,bid=f.dataset.bag;
   if(kind==='login'){
     var sub=e.submitter&&e.submitter.value;
     doAuth(sub==='signup'?'signup':'signin',String(d.get('email')).trim(),String(d.get('password')));return;
@@ -1084,13 +1205,19 @@ document.addEventListener('submit',function(e){
       enqueue('hikes/'+nid,function(){return db.doc('hikes/'+nid).set(doc)});
       closeSheet();location.hash='sortie-'+nid;render();
     }
+  }else if(kind==='bag'){
+    var bn=String(d.get('name')).trim();if(!bn)return;var bnote=String(d.get('note')).trim();
+    closeSheet();
+    if(id){mutateBag(id,function(b){b.name=bn;b.note=bnote})}
+    else{var nb={id:'bag-'+uid(),name:bn,note:bnote,items:[],owner:meMail()};state.bags[nb.id]=nb;saveBag(nb);location.hash='sac-'+nb.id;render()}
   }else if(kind==='join'){
-    var jn=String(d.get('name')).trim();if(!jn)return;var jkg=num(d.get('kg')),gids=d.getAll('gear'),jm=meMail();
+    var jn=String(d.get('name')).trim();if(!jn)return;var jkg=num(d.get('kg')),gids=d.getAll('gear'),jm=meMail(),jb=state.bags[d.get('bag')],jq={};
+    if(jb)(jb.items||[]).forEach(function(it){jq[it.gid]=it.qty||1});
     closeSheet();
     mutateHike(hid,function(h){
       if(h.people.some(function(p){return p.email===jm}))return;
       var pid=uid();h.people.push({id:pid,name:jn.slice(0,40),kg:jkg,email:jm});
-      gids.forEach(function(gid){var g=state.gear[gid];if(g)h.items.push({id:uid(),gearId:g.id,name:g.name,cat:g.cat,g:g.g,qty:1,kind:g.kind,who:pid,packed:false})});
+      gids.forEach(function(gid){var g=state.gear[gid];if(g)h.items.push({id:uid(),gearId:g.id,name:g.name,cat:g.cat,g:g.g,qty:jq[gid]||1,kind:g.kind,who:pid,packed:false})});
     },['people','items']);
     toast('Tu as rejoint la sortie.');
   }else if(kind==='person'){
@@ -1106,7 +1233,8 @@ document.addEventListener('submit',function(e){
     var gname=String(d.get('name')).trim(),gw=num(d.get('g'));if(!gname||gw==null)return;
     var g={id:id||uid(),name:gname,g:gw,cat:String(d.get('cat')),kind:String(d.get('kind')),owner:(id&&state.gear[id]&&state.gear[id].owner)||meMail()};
     state.gear[g.id]=g;saveGear(g);
-    if(hid&&!id){closeSheet();pickCtx=null;addPickItem(hid,g.id);toast('Ajouté à la sortie et à l\'inventaire.')}
+    if(bid&&!id){closeSheet();pickCtx=null;addToBag(bid,g.id);toast('Ajouté au sac et à l\'inventaire.')}
+    else if(hid&&!id){closeSheet();pickCtx=null;addPickItem(hid,g.id);toast('Ajouté à la sortie et à l\'inventaire.')}
     else{
       closeSheet();render();
       if(id)toast('Inventaire mis à jour. Les sorties déjà composées gardent leur poids.');
@@ -1171,18 +1299,18 @@ function makeDb(client){
 }
 function loadCache(){
   try{var c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
-    if(c){state.gear=c.gear||{};state.hikes=c.hikes||{};state.ready.gear=true;state.ready.hikes=true;return true}}catch(e){}
+    if(c){state.gear=c.gear||{};state.bags=c.bags||{};state.hikes=c.hikes||{};state.ready.gear=true;state.ready.hikes=true;return true}}catch(e){}
   return false;
 }
-function saveCache(){try{localStorage.setItem(CACHE_KEY,JSON.stringify({gear:state.gear,hikes:state.hikes}))}catch(e){}}
+function saveCache(){try{localStorage.setItem(CACHE_KEY,JSON.stringify({gear:state.gear,bags:state.bags,hikes:state.hikes}))}catch(e){}}
 var slowT=null;
 function ready(k){state.ready[k]=true;if(state.ready.gear&&state.ready.hikes)clearTimeout(slowT)}
 function subscribe(){
   if(subscribed)return;subscribed=true;
   clearTimeout(slowT);slowT=setTimeout(function(){state.slow=true;render()},10000);
   unsubs.push(db.collection('gear').onSnapshot(function(snap){
-    var m={};snap.docs.forEach(function(x){var v=x.data();if(v)m[x.id]=Object.assign({id:x.id},v)});
-    state.gear=m;ready('gear');saveCache();scheduleRender();
+    var m={},bg={};snap.docs.forEach(function(x){var v=x.data();if(!v)return;var o=Object.assign({id:x.id},v);if(v.type==='bag'){o.items=o.items||[];bg[x.id]=o}else m[x.id]=o});
+    state.gear=m;state.bags=bg;ready('gear');saveCache();scheduleRender();
   },function(){ready('gear');scheduleRender()}));
   unsubs.push(db.collection('hikes').onSnapshot(function(snap){
     var m={};snap.docs.forEach(function(x){
@@ -1199,7 +1327,7 @@ function subscribe(){
 }
 function teardown(){
   unsubs.forEach(function(u){try{u()}catch(e){}});unsubs=[];subscribed=false;
-  state.gear={};state.hikes={};state.ready={gear:false,hikes:false};state.slow=false;
+  state.gear={};state.bags={};state.hikes={};state.ready={gear:false,hikes:false};state.slow=false;
   try{localStorage.removeItem(CACHE_KEY)}catch(e){}
 }
 var JOIN_KEY='gramme-join';
