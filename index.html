@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>try{var __t=localStorage.getItem("gramme-theme");if(__t==="light"||__t==="dark")document.documentElement.setAttribute("data-theme",__t)}catch(e){}</script>
 <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1170,6 +1171,7 @@ document.addEventListener('click',function(e){
   if(a==='pack'||a==='who')return; /* gérés par change */
   switch(a){
     case 'close':closeSheet();break;
+    case 'theme':applyTheme(t.dataset.val);document.querySelectorAll('[data-act="theme"]').forEach(function(b){b.setAttribute('aria-pressed',String(b===t))});break;
     case 'photo-del':{var hi2=$('#g-photo');if(hi2)hi2.value='';var ph2=$('#g-ph');if(ph2)ph2.innerHTML='<span class="th big ph" aria-hidden="true"></span>';t.hidden=true;break}
     case 'fold':{var sk=t.dataset.sec;folded[sk]=!folded[sk];var se=document.getElementById('sec-'+sk);if(se)se.classList.toggle('collapsed',!!folded[sk]);t.setAttribute('aria-expanded',folded[sk]?'false':'true');break}
     case 'jump':{var jk=t.dataset.sec;folded[jk]=false;var je=document.getElementById('sec-'+jk);if(je){je.classList.remove('collapsed');var fb=je.querySelector('.fold');if(fb)fb.setAttribute('aria-expanded','true');je.scrollIntoView({behavior:'smooth',block:'start'})}break}
@@ -1546,8 +1548,23 @@ function signOut(){
     teardown();state.auth='out';state.signupDone=false;render();
   });
 }
+/* Thème : Auto (suit l'iPhone), Clair ou Sombre. Le choix est gardé sur cet appareil. */
+function themePref(){try{var t=localStorage.getItem('gramme-theme');return t==='light'||t==='dark'?t:'auto'}catch(e){return 'auto'}}
+function applyTheme(t){
+  var r=document.documentElement;
+  if(t==='light'||t==='dark')r.setAttribute('data-theme',t);else r.removeAttribute('data-theme');
+  try{if(t==='auto')localStorage.removeItem('gramme-theme');else localStorage.setItem('gramme-theme',t)}catch(e){}
+  document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){
+    var dark=/dark/.test(m.media||'');
+    if(t==='auto')m.content=dark?'#000000':'#f5f5f7';
+    else m.content=t==='dark'?'#000000':'#f5f5f7';
+  });
+}
 function accountSheet(){
+  var tp=themePref();
   openSheet('Compte','<div class="form"><p>Connecté avec <b>'+esc(userEmail)+'</b></p>'+
+    '<div><div class="mute small" style="margin-bottom:6px;font-weight:600">Apparence</div><div class="chips" role="group" aria-label="Apparence" style="margin:0">'+
+    [['auto','Auto'],['light','Clair'],['dark','Sombre']].map(function(x){return '<button class="chip" type="button" data-act="theme" data-val="'+x[0]+'" aria-pressed="'+(tp===x[0])+'">'+x[1]+'</button>'}).join('')+'</div></div>'+
     '<p class="mute small">Pour inviter un ami, ajoute son adresse e-mail dans la table allowed_emails de Supabase (voir le README).</p>'+
     '<div class="actions"><button class="btn danger grow" data-act="signout">Se déconnecter</button></div></div>',false);
 }
