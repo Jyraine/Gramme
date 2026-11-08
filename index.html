@@ -471,6 +471,11 @@ function viewHike(id){
 
   /* sacs */
   out+='<section class="sec" aria-labelledby="s-sacs"><div class="sec-h"><h2 id="s-sacs">Sacs</h2><button class="btn sm act" data-act="new-person">Ajouter une personne</button></div>';
+  var todo=items.filter(function(i){return i.kind!=='worn'&&!(i.who&&people.some(function(p){return p.id===i.who}))}).length;
+  var can=people.length>=2;
+  out+='<div class="card act" style="margin-bottom:10px"><button class="btn pri" style="width:100%" data-act="balance"'+(can?'':' disabled')+'>Répartir automatiquement le poids</button>'+
+    '<p class="mute small" style="margin-top:8px">'+(!can?'Ajoute au moins deux personnes pour répartir le matériel entre les sacs.':(todo?todo+' ligne'+(todo>1?'s':'')+' à répartir. Le poids du corps, s\'il est renseigné, sert à équilibrer la charge. Ce que tu attribues à la main ne bouge pas.':'Tout est déjà attribué. Ajoute du matériel, ou remets tout à répartir pour recalculer.'))+'</p>'+
+    (can?'<button class="btn sm ghost" style="margin-top:6px" data-act="reset-assign">Tout remettre à répartir</button>':'')+'</div>';
   if(!people.length){
     out+='<div class="card mute">Ajoute les personnes qui partent (toi compris) pour répartir le poids. Le poids du corps est facultatif et sert à comparer la charge à '+target+' %.</div>';
   }else{
@@ -491,9 +496,6 @@ function viewHike(id){
         '<div class="sub"><span>Base '+fmtW(nn.base)+'</span><span>Conso. '+fmtW(nn.conso)+'</span></div>'+catBar(nn.byCat)+'</div>';
     }
     out+='</div>';
-    out+='<div class="actions act"><button class="btn sm" data-act="balance"'+(people.length<2?' disabled':'')+'>Répartir automatiquement</button>'+
-      '<button class="btn sm ghost" data-act="reset-assign"'+(people.length<2?' disabled':'')+'>Tout remettre à répartir</button></div>'+
-      '<p class="mute small" style="margin-top:8px">La répartition automatique place le matériel « À répartir » en tenant compte du poids du corps quand il est renseigné. Ce que tu as attribué à la main ne bouge pas.</p>';
   }
   out+='</section>';
 
