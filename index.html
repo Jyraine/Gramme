@@ -360,18 +360,109 @@ function parseGpx(text){
       profile.push([Math.round(d[idx]/10)/100,Math.round(sm[idx])]);
     }
   }
+  var track=[],NT=500,ti=0;
+  for(var m=0;m<NT;m++){
+    var tg=total*m/(NT-1);
+    while(ti<d.length-1&&d[ti]<tg)ti++;
+    track.push([Math.round(d[ti]/10)/100,sm?Math.round(sm[ti]):null,Math.round(pts[ti].lat*1e5)/1e5,Math.round(pts[ti].lon*1e5)/1e5]);
+  }
   var route=[],R=140;
   for(var q=0;q<R;q++){var p=pts[Math.round(q*(pts.length-1)/(R-1))];route.push([Math.round(p.lat*1e5)/1e5,Math.round(p.lon*1e5)/1e5])}
   return {
     stats:{km:Math.round(total/10)/100,up:up==null?null:Math.round(up),down:down==null?null:Math.round(down),
       minE:minE==null?null:Math.round(minE),maxE:maxE==null?null:Math.round(maxE),
       durMin:durMin==null?null:Math.round(durMin),movMin:movMin==null?null:Math.round(movMin)},
-    profile:profile,route:route,date:date
+    profile:profile,route:route,track:track,date:date
   };
 }
 
+/* ---------- bivouacs ---------- */
+function effortOf(tr){
+  var e=[0];
+  for(var i=1;i<tr.length;i++){
+    var dz=(tr[i][1]!=null&&tr[i-1][1]!=null)?tr[i][1]-tr[i-1][1]:0;
+    e.push(e[i-1]+(tr[i][0]-tr[i-1][0])+Math.max(dz,0)/100);
+  }
+  return e;
+}
+function suggestNights(tr){
+  var E=effortOf(tr);E=E[E.length-1];
+  return Math.min(7,Math.max(1,Math.ceil(E/18)-1));
+}
+function findCamps(tr,nights){
+  var n=tr.length,eff=effortOf(tr),E=eff[n-1],days=nights+1,step=E/days,w=step*0.3;
+  var kmTot=tr[n-1][0],r=Math.max(0.25,2*kmTot/(n-1)),out=[],last=0,k,i,j;
+  for(k=1;k<=nights;k++){
+    var tg=step*k,best=null;
+    for(i=1;i<n-1;i++){
+      if(i<=last||Math.abs(eff[i]-tg)>w)continue;
+      var km=tr[i][0];if(km<1||kmTot-km<1)continue;
+      var sl=0,pen=0,known=tr[i][1]!=null;
+      if(known){
+        var lo=i,hi=i;
+        while(lo>0&&km-tr[lo][0]<r)lo--;
+        while(hi<n-1&&tr[hi][0]-km<r)hi++;
+        var sp=tr[hi][0]-tr[lo][0],sm=0;
+        for(j=lo+1;j<=hi;j++)sm+=Math.abs(tr[j][1]-tr[j-1][1]);
+        sl=sp>0?sm/(sp*1000)*100:0;
+        var mx=-1e9;
+        for(j=0;j<n;j++){if(Math.abs(tr[j][0]-km)<=1.5&&tr[j][1]>mx)mx=tr[j][1]}
+        if(tr[i][1]>=mx-20)pen+=2;
+        if(tr[i][1]>2800)pen+=1.5;
+      }
+      var sc=sl+pen+2*Math.abs(eff[i]-tg)/w;
+      if(!best||sc<best.sc)best={sc:sc,idx:i,km:km,ele:tr[i][1],lat:tr[i][2],lon:tr[i][3],slope:known?Math.round(sl*10)/10:null};
+    }
+    if(!best){
+      i=0;while(i<n-1&&eff[i]<tg)i++;
+      best={sc:0,idx:i,km:tr[i][0],ele:tr[i][1],lat:tr[i][2],lon:tr[i][3],slope:null};
+    }
+    last=best.idx;delete best.sc;out.push(best);
+  }
+  return out;
+}
+function daySegments(h){
+  var tr=h.track,camps=h.camps||[];if(!tr||!tr.length)return [];
+  var eff=effortOf(tr),E=eff[eff.length-1]||1,b=[0],segs=[],i;
+  camps.forEach(function(c){b.push(c.idx)});b.push(tr.length-1);
+  for(i=1;i<b.length;i++){
+    var a=b[i-1],z=b[i],up=0;
+    for(var j=a+1;j<=z;j++){if(tr[j][1]!=null&&tr[j-1][1]!=null&&tr[j][1]>tr[j-1][1])up+=tr[j][1]-tr[j-1][1]}
+    var ef=eff[z]-eff[a],mm=h.stats&&h.stats.movMin?h.stats.movMin*ef/E:ef/4*60;
+    segs.push({km:tr[z][0]-tr[a][0],up:Math.round(up),min:mm,hasEle:tr[z][1]!=null});
+  }
+  return segs;
+}
+function campFlat(sl){return sl==null?'altitude inconnue':sl<4?'très plat':sl<8?'plutôt plat':'pente notable'}
+function campCard(h){
+  var n=h.nights||suggestNights(h.track),out='<section class="sec" aria-labelledby="s-biv"><div class="sec-h"><h2 id="s-biv">Bivouac</h2>'+
+    '<button class="chip act" data-act="tent" aria-pressed="'+(h.tent?'true':'false')+'">Je pars en tente</button></div>';
+  if(!h.tent)return out+'<p class="mute small">Active « Je pars en tente » pour obtenir des emplacements de bivouac le long de la trace.</p></section>';
+  var opts='';for(var q=1;q<=7;q++)opts+='<option value="'+q+'"'+(q===n?' selected':'')+'>'+q+' nuit'+(q>1?'s':'')+'</option>';
+  out+='<div class="card"><div style="display:flex;gap:8px;align-items:center"><select data-act="nights" aria-label="Nombre de nuits" style="width:auto;flex:1">'+opts+'</select>'+
+    '<button class="btn sm act" data-act="camp-suggest">Recalculer</button></div>'+
+    '<p class="mute small" style="margin:8px 0">Chaque bivouac est placé vers la fin d\'une journée de marche (distance + 1 km par 100 m de D+), sur le passage le plus plat possible et hors crête.</p>';
+  var segs=daySegments(h),camps=h.camps||[];
+  segs.forEach(function(sg,k){
+    out+='<div class="row" style="padding:8px 0;border-top:1px solid var(--line);justify-content:space-between"><div><b>Jour '+(k+1)+'</b></div><div class="mono small">'+fmt(sg.km,1)+' km'+(sg.hasEle?' · D+ '+fmt(sg.up,0)+' m':'')+' · ≈ '+fmtDur(sg.min)+'</div></div>';
+    if(camps[k]){var c=camps[k];
+      out+='<div style="padding:8px 10px;margin-bottom:4px;border-radius:8px;background:var(--paper);border:1px solid var(--line)"><b>⛺ Nuit '+(k+1)+'</b> · km '+fmt(c.km,1)+(c.ele!=null?' · '+fmt(c.ele,0)+' m':'')+
+      '<div class="mute small">'+campFlat(c.slope)+(c.slope!=null?' (pente ≈ '+fmt(c.slope,0)+' %)':'')+' · '+c.lat.toFixed(4)+', '+c.lon.toFixed(4)+'</div></div>';}
+  });
+  out+='<div class="actions act" style="margin-top:8px"><button class="btn sm" data-act="camp-gpx"'+(camps.length?'':' disabled')+'>Télécharger les waypoints (GPX)</button></div>'+
+    '<p class="mute small" style="margin-top:6px">Suggestion à vérifier sur place : point d\'eau, vent, réglementation du bivouac.</p></div></section>';
+  return out;
+}
+function campsGpx(h){
+  var x='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Gramme" xmlns="http://www.topografix.com/GPX/1/1">\n';
+  (h.camps||[]).forEach(function(c,k){
+    x+='<wpt lat="'+c.lat+'" lon="'+c.lon+'">'+(c.ele!=null?'<ele>'+c.ele+'</ele>':'')+'<name>Bivouac nuit '+(k+1)+'</name><sym>Campground</sym></wpt>\n';
+  });
+  return x+'</gpx>\n';
+}
+
 /* ---------- dessins ---------- */
-function routeSvg(route){
+function routeSvg(route,camps){
   if(!route||route.length<2)return '';
   var W=320,H=190,P=14,la=route.map(function(p){return p[0]}),lo=route.map(function(p){return p[1]});
   var minLa=Math.min.apply(null,la),maxLa=Math.max.apply(null,la),minLo=Math.min.apply(null,lo),maxLo=Math.max.apply(null,lo);
@@ -385,9 +476,10 @@ function routeSvg(route){
   return '<svg class="viz" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Tracé de la randonnée vu du dessus">'+grid+
     '<polyline points="'+pts.join(' ')+'" fill="none" stroke="var(--sig)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'+
     '<circle cx="'+a[0]+'" cy="'+a[1]+'" r="5" fill="var(--card)" stroke="var(--ink)" stroke-width="2"/>'+
-    '<circle cx="'+z[0]+'" cy="'+z[1]+'" r="5" fill="var(--acc)" stroke="var(--ink)" stroke-width="2"/></svg>';
+    '<circle cx="'+z[0]+'" cy="'+z[1]+'" r="5" fill="var(--acc)" stroke="var(--ink)" stroke-width="2"/>'+
+    (camps||[]).map(function(c,j){return '<circle cx="'+(ox+(c.lon-minLo)*k*s).toFixed(1)+'" cy="'+(oy+(maxLa-c.lat)*s).toFixed(1)+'" r="9" fill="var(--acc)" stroke="var(--ink)" stroke-width="2"/><text x="'+(ox+(c.lon-minLo)*k*s).toFixed(1)+'" y="'+(oy+(maxLa-c.lat)*s+4).toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="700" fill="var(--on-acc)">'+(j+1)+'</text>'}).join('')+'</svg>';
 }
-function profileSvg(pr){
+function profileSvg(pr,camps){
   if(!pr||pr.length<2)return '';
   var W=320,H=120,L=48,R=8,T=10,B=20;
   var es=pr.map(function(p){return p[1]}),mn=Math.min.apply(null,es),mx=Math.max.apply(null,es);
@@ -403,6 +495,7 @@ function profileSvg(pr){
     '<path d="'+area+'" fill="var(--sig)" opacity=".22"/><path d="'+line+'" fill="none" stroke="var(--sig)" stroke-width="2.2" stroke-linejoin="round"/>'+
     '<text x="'+(L-4)+'" y="'+(Y(mx)+4)+'" text-anchor="end">'+fmt(mx,0)+' m</text>'+
     '<text x="'+(L-4)+'" y="'+(H-B+4)+'" text-anchor="end">'+fmt(mn,0)+' m</text>'+
+    (camps||[]).filter(function(c){return c.ele!=null}).map(function(c,j){return '<circle cx="'+X(c.km).toFixed(1)+'" cy="'+Y(Math.min(mx,Math.max(mn,c.ele))).toFixed(1)+'" r="8" fill="var(--acc)" stroke="var(--ink)" stroke-width="2"/><text x="'+X(c.km).toFixed(1)+'" y="'+(Y(Math.min(mx,Math.max(mn,c.ele)))+4).toFixed(1)+'" text-anchor="middle" font-size="10" font-weight="700" fill="var(--on-acc)">'+(j+1)+'</text>'}).join('')+
     '<text x="'+L+'" y="'+(H-4)+'">0 km</text><text x="'+(W-R)+'" y="'+(H-4)+'" text-anchor="end">'+fmt(km,1)+' km</text></svg>';
 }
 function catBar(byCat){
@@ -461,13 +554,15 @@ function viewHike(id){
       '<div class="tile"><b>'+(s.up!=null?fmt(s.up,0):'–')+'</b><span>D+ en m</span></div>'+
       '<div class="tile"><b>'+(s.down!=null?fmt(s.down,0):'–')+'</b><span>D− en m</span></div>'+
       '<div class="tile"><b>'+fmtDur(s.movMin)+'</b><span>en mouvement</span></div></div>'+
-      routeSvg(h.route)+profileSvg(h.profile)+
+      routeSvg(h.route,h.camps)+profileSvg(h.profile,h.camps)+
       '<div class="mute small" style="margin-top:8px">'+(s.durMin!=null?'Durée totale '+fmtDur(s.durMin)+'. ':'')+(s.maxE!=null?'Altitude de '+fmt(s.minE,0)+' à '+fmt(s.maxE,0)+' m.':'')+'</div>'+
       '<div class="actions act"><label class="btn sm ghost" for="gpxIn">Remplacer le GPX</label></div></div>';
   }else{
     out+='<div class="drop"><p>Importe le fichier GPX exporté depuis l\'appli COROS pour afficher la distance, le dénivelé, la durée et le tracé.</p><label class="btn pri act" for="gpxIn">Importer un GPX</label></div>';
   }
   out+='<input type="file" id="gpxIn" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden></section>';
+
+  if(h.track)out+=campCard(h);
 
   /* sacs */
   out+='<section class="sec" aria-labelledby="s-sacs"><div class="sec-h"><h2 id="s-sacs">Sacs</h2><button class="btn sm act" data-act="new-person">Ajouter une personne</button></div>';
@@ -799,6 +894,19 @@ document.addEventListener('click',function(e){
     case 'pick-add':addPickItem(pickCtx.hikeId,id);break;
     case 'pick-new':gearSheet(null,pickCtx&&pickCtx.hikeId);break;
     case 'share':shareSheet(hid);break;
+    case 'tent':
+      mutateHike(hid,function(h){
+        h.tent=!h.tent;
+        if(h.tent&&h.track){h.nights=h.nights||suggestNights(h.track);h.camps=findCamps(h.track,h.nights)}else h.camps=[];
+      },['tent','nights','camps']);break;
+    case 'camp-suggest':
+      mutateHike(hid,function(h){h.nights=h.nights||suggestNights(h.track);h.camps=findCamps(h.track,h.nights)},['nights','camps']);
+      toast('Bivouacs recalculés.');break;
+    case 'camp-gpx':
+      var hh=state.hikes[hid];if(!hh||!(hh.camps||[]).length)break;
+      var url=URL.createObjectURL(new Blob([campsGpx(hh)],{type:'application/gpx+xml'})),an=document.createElement('a');
+      an.href=url;an.download=(hh.name||'rando').replace(/[^\w-]+/g,'-')+'-bivouacs.gpx';document.body.appendChild(an);an.click();an.remove();
+      setTimeout(function(){URL.revokeObjectURL(url)},3000);break;
     case 'gear-new':gearSheet(null,null);break;
     case 'gear-edit':gearSheet(id,null);break;
     case 'seed':seedGear();break;
@@ -852,6 +960,7 @@ document.addEventListener('change',function(e){
   if(t.id==='gpxIn'){importGpx(t);return}
   if(!t.dataset||!t.dataset.act)return;
   if(t.dataset.act==='pack'){var v=t.checked;mutateHike(hid,function(h){h.items.forEach(function(i){if(i.id===t.dataset.id)i.packed=v})},['items'])}
+  if(t.dataset.act==='nights'){var nv=parseInt(t.value,10);mutateHike(hid,function(h){h.nights=nv;h.camps=findCamps(h.track,nv)},['nights','camps'])}
   if(t.dataset.act==='who'){var w=t.value;mutateHike(hid,function(h){h.items.forEach(function(i){if(i.id===t.dataset.id)i.who=w})},['items'])}
 });
 document.addEventListener('input',function(e){
@@ -920,9 +1029,10 @@ function importGpx(input){
   file.text().then(function(txt){
     var r=parseGpx(txt);
     mutateHike(hid,function(h){
-      h.stats=r.stats;h.profile=r.profile;h.route=r.route;
+      h.stats=r.stats;h.profile=r.profile;h.route=r.route;h.track=r.track;
+      if(h.tent){h.nights=h.nights||suggestNights(r.track);h.camps=findCamps(r.track,h.nights)}else h.camps=[];
       if(r.date)h.date=r.date;
-    },['stats','profile','route','date']);
+    },['stats','profile','route','track','camps','nights','date']);
     toast('Trace importée : '+fmt(r.stats.km,1)+' km'+(r.stats.up!=null?', D+ '+fmt(r.stats.up,0)+' m':'')+'.');
   }).catch(function(err){toast(err&&err.message?err.message:'Ce fichier n\'a pas pu être lu.')});
   input.value='';
