@@ -586,12 +586,30 @@ function viewHike(id){
         '<div class="sub"><span>Base '+fmtW(b.base)+'</span><span>Conso. '+fmtW(b.conso)+'</span>'+(b.worn?'<span>Sur soi '+fmtW(b.worn)+'</span>':'')+'</div>'+
         catBar(b.byCat)+pill+'</button>';
     });
+
     if(c.none.pack>0){
       var nn=c.none;
       out+='<div class="plate open"><div class="who"><b>À répartir</b></div><div class="big">'+fmt(nn.pack/1000,1)+'<small>kg</small></div>'+
         '<div class="sub"><span>Base '+fmtW(nn.base)+'</span><span>Conso. '+fmtW(nn.conso)+'</span></div>'+catBar(nn.byCat)+'</div>';
     }
     out+='</div>';
+    var bags='<div style="margin-top:10px">';
+    people.forEach(function(p){
+      var mine=items.filter(function(i){return i.who===p.id}),b=c.per[p.id],cats={};
+      mine.forEach(function(i){var k=CATS.indexOf(i.cat)<0?'Divers':i.cat;(cats[k]=cats[k]||[]).push(i)});
+      var body='';
+      if(!mine.length)body='<p class="mute small" style="margin:8px 0 0">Aucun matériel attribué pour l\'instant.</p>';
+      CATS.concat(['Divers']).forEach(function(k,ix){
+        if(!cats[k])return;
+        body+='<div class="group-h" style="margin-top:10px"><i class="dot" style="background:var(--c'+Math.min(ix,9)+')"></i><h3>'+esc(k)+'</h3><span class="mono small">'+fmtW(cats[k].reduce(function(a,i){return a+(i.g||0)*(i.qty||1)},0))+'</span></div>';
+        cats[k].forEach(function(i){
+          body+='<div class="row" style="justify-content:space-between;padding:4px 0;gap:8px"><span>'+(i.packed?'✓ ':'')+esc(i.name)+(i.qty>1?' ×'+i.qty:'')+(i.kind==='worn'?' <span class="mute small">(sur soi)</span>':i.kind==='consumable'?' <span class="mute small">(conso.)</span>':'')+'</span><span class="mono small">'+fmtW((i.g||0)*(i.qty||1))+'</span></div>';
+        });
+      });
+      bags+='<details data-bag="'+esc(p.id)+'"'+(openBags[p.id]?' open':'')+' class="card" style="margin-bottom:8px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;min-height:32px;align-items:center"><b>🎒 Sac de '+esc(p.name)+'</b><span class="mono small">'+fmtW(b.pack)+(b.worn?' + '+fmtW(b.worn)+' sur soi':'')+'</span></summary>'+body+'</details>';
+    });
+    bags+='</div>';
+    out+=bags;
   }
   out+='</section>';
 
@@ -630,6 +648,8 @@ function viewHike(id){
   out+='</section>';
   return out;
 }
+var openBags={};
+document.addEventListener('toggle',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.bag)openBags[t.dataset.bag]=t.open},true);
 function visible(h,i){
   var f=state.filter;if(f==='all')return true;
   var known=i.who&&(h.people||[]).some(function(p){return p.id===i.who});
