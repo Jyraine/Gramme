@@ -251,8 +251,10 @@ function mutateHike(id,fn,keys){
   var cur=state.hikes[id];if(!cur||!canWrite)return;
   var h=structuredClone(cur);fn(h);state.hikes[id]=h;render();refreshPick();saveHike(h,keys);
 }
+function meMail(){return (userEmail||'').toLowerCase()}
+function isOwner(h){return !h.owner||h.owner===meMail()}
 function saveGear(g){
-  if(!db)return;var d={name:g.name,g:g.g,cat:g.cat,kind:g.kind};
+  if(!db)return;var d={name:g.name,g:g.g,cat:g.cat,kind:g.kind,owner:g.owner||meMail()};
   enqueue('gear/'+g.id,function(){return db.doc('gear/'+g.id).set(d)});
 }
 
@@ -509,6 +511,7 @@ function catBar(byCat){
 function route(){
   var h=(location.hash||'').replace(/^#/,'');
   if(h.indexOf('sortie-')===0)return {name:'sortie',tab:'sorties',id:h.slice(7)};
+  if(h.indexOf('rejoindre-')===0)return {name:'sorties',tab:'sorties'};
   if(h==='materiel')return {name:'materiel',tab:'materiel'};
   if(h==='bilan')return {name:'bilan',tab:'bilan'};
   return {name:'sorties',tab:'sorties'};
@@ -544,7 +547,9 @@ function viewHike(id){
   var people=h.people||[],items=h.items||[],c=compute(h),target=h.targetPct||20;
   var out='<a class="back-link" href="#sorties">← Sorties</a>';
   out+='<div class="head" style="margin-top:6px"><div><h1>'+esc(h.name)+'</h1><div class="mute small">'+esc(fmtDate(h.date))+(h.place?' · '+esc(h.place):'')+'</div></div>'+
-    '<div class="actions" style="margin:0"><button class="btn sm act" data-act="edit-hike">Modifier</button><button class="btn sm" data-act="share">Copier la liste</button></div></div>';
+    '<div class="actions" style="margin:0"><button class="btn sm act" data-act="edit-hike">Modifier</button><button class="btn sm act" data-act="invite">Inviter</button><button class="btn sm" data-act="share">Copier la liste</button></div></div>';
+  if(!isOwner(h))out+='<p class="mute small" style="margin-bottom:6px">Sortie partagée par '+esc(h.owner)+'.</p>';
+  else if((h.members||[]).length)out+='<p class="mute small" style="margin-bottom:6px">Partagée avec '+(h.members||[]).length+' personne'+((h.members||[]).length>1?'s':'')+'.</p>';
   if(h.notes)out+='<p class="mute" style="margin-bottom:6px">'+esc(h.notes)+'</p>';
 
   /* trace */
@@ -729,16 +734,17 @@ function setNav(tab){
 function viewAuth(){
   var a=state.auth;
   if(a==='setup')return '<div class="auth card"><h1>Configuration</h1><p class="mute">Renseigne l\'adresse et la clé de ton projet Supabase dans le fichier <b>config.js</b>, puis recharge la page. Les étapes sont dans le README.</p></div>';
-  if(a==='denied')return '<div class="auth card"><h1>Accès à valider</h1><p class="mute">L\'adresse <b>'+esc(userEmail)+'</b> n\'est pas encore autorisée. Demande à la personne qui gère Gramme de l\'ajouter, puis reconnecte-toi.</p><div class="actions"><button class="btn" data-act="signout">Se déconnecter</button></div></div>';
+  if(a==='denied')return '<div class="auth card"><h1>Accès à valider</h1><p class="mute">L\'adresse <b>'+esc(userEmail)+'</b> n\'est pas encore autorisée. Demande à un ami de t\'envoyer un lien d\'invitation vers une de ses sorties : ouvre-le une fois connecté et l\'accès sera activé.</p><div class="actions"><button class="btn" data-act="signout">Se déconnecter</button></div></div>';
   if(a==='out'){
     var info=state.signupDone?'<div class="banner" style="margin-bottom:12px;border-color:var(--ok);color:var(--ok)">Compte créé. Ouvre le lien de confirmation reçu par e-mail (pense aux courriers indésirables), puis reviens te connecter ici.</div>':'';
-    return '<div class="auth"><h1>Connexion</h1><p class="mute" style="margin-bottom:14px">Tes sorties et ton matériel, partagés avec ceux que tu invites. Utilise l\'adresse e-mail autorisée.</p>'+info+
+    var inv=pendingJoin()?'<div class="banner" style="margin-bottom:12px;border-color:var(--ok);color:var(--ok)">Tu es invité à rejoindre une sortie. Connecte-toi ou crée ton compte pour la rejoindre.</div>':'';
+    return '<div class="auth"><h1>Connexion</h1><p class="mute" style="margin-bottom:14px">Tes sorties et ton matériel restent privés. Tu choisis ce que tu partages, sortie par sortie.</p>'+inv+info+
       '<form class="form" data-form="login">'+
       field('l-mail','Adresse e-mail','<input id="l-mail" name="email" type="email" inputmode="email" autocomplete="email" required value="'+esc(state.loginEmail)+'">')+
       field('l-pass','Mot de passe (8 caractères minimum)','<input id="l-pass" name="password" type="password" autocomplete="current-password" minlength="8" required>')+
       '<button class="btn pri" type="submit" name="mode" value="signin">Se connecter</button>'+
       '<button class="btn" type="submit" name="mode" value="signup" formnovalidate>Créer mon compte</button>'+
-      '</form><p class="mute small" style="margin-top:12px">Première visite : choisis « Créer mon compte » avec l\'adresse que la personne qui gère Gramme a autorisée.</p></div>';
+      '</form><p class="mute small" style="margin-top:12px">Première visite : choisis « Créer mon compte » avec ton adresse e-mail.</p></div>';
   }
   return '<div class="card empty"><p class="mute">Chargement…</p></div>';
 }
@@ -799,7 +805,7 @@ function hikeSheet(id){
   }
   b+=field('f-target','Charge cible, en % du poids du corps','<input id="f-target" name="target" type="number" inputmode="numeric" min="5" max="50" value="'+(h&&h.targetPct?h.targetPct:20)+'">');
   b+=field('f-notes','Notes','<textarea id="f-notes" name="notes" maxlength="600">'+esc(h?h.notes||'':'')+'</textarea>');
-  b+='<div class="actions"><button class="btn pri grow" type="submit">'+(h?'Enregistrer':'Créer la sortie')+'</button>'+(h?'<button class="btn danger" type="button" data-act="del-hike" data-id="'+esc(id)+'">Supprimer</button>':'')+'</div></form>';
+  b+='<div class="actions"><button class="btn pri grow" type="submit">'+(h?'Enregistrer':'Créer la sortie')+'</button>'+(h&&isOwner(h)?'<button class="btn danger" type="button" data-act="del-hike" data-id="'+esc(id)+'">Supprimer</button>':'')+'</div></form>';
   openSheet(h?'Modifier la sortie':'Nouvelle sortie',b);
 }
 function personSheet(hid,pid){
@@ -811,6 +817,39 @@ function personSheet(hid,pid){
     '<label class="row" style="gap:10px;align-items:center;min-height:44px"><input type="checkbox" name="me" value="1" style="width:auto;min-height:0"'+(p&&p.email&&p.email===userEmail?' checked':'')+'><span>C\'est mon compte ('+esc(userEmail)+')</span></label>'+
     '<div class="actions"><button class="btn pri grow" type="submit">Enregistrer</button>'+(p?'<button class="btn danger" type="button" data-act="del-person" data-id="'+esc(pid)+'">Retirer</button>':'')+'</div></form>';
   openSheet(p?'Modifier '+p.name:'Ajouter une personne',b);
+}
+function randTok(){var a=new Uint8Array(12);(window.crypto||{getRandomValues:function(x){for(var i=0;i<x.length;i++)x[i]=Math.floor(Math.random()*256)}}).getRandomValues(a);return Array.prototype.map.call(a,function(v){return ('0'+v.toString(16)).slice(-2)}).join('')}
+function inviteLink(h){return location.origin+location.pathname+'#rejoindre-'+h.id+'.'+h.joinToken}
+function inviteSheet(hid){
+  var h=state.hikes[hid];if(!h)return;
+  var own=isOwner(h),b='';
+  if(h.joinToken){
+    b+='<p class="mute small">Envoie ce lien à tes amis. Ils créent leur compte ou se connectent, puis ajoutent leur matériel à la sortie.</p>'+
+      '<input id="inv-link" readonly value="'+esc(inviteLink(h))+'" style="margin:8px 0">'+
+      '<div class="actions"><button class="btn pri grow" data-act="invite-copy">Copier le lien</button>'+(own?'<button class="btn" data-act="invite-off">Désactiver</button>':'')+'</div>';
+  }else if(own){
+    b+='<p class="mute small">Cette sortie est privée : toi seul la vois. Crée un lien pour inviter des amis.</p><div class="actions"><button class="btn pri grow" data-act="invite-link">Créer le lien d\'invitation</button></div>';
+  }else b+='<p class="mute small">Aucun lien actif. Seul l\'organisateur peut en créer un.</p>';
+  b+='<h3 style="margin:16px 0 6px">Participants</h3><div class="row" style="justify-content:space-between;padding:6px 0"><span>'+esc(h.owner||meMail())+'</span><span class="mute small">organisateur</span></div>';
+  (h.members||[]).forEach(function(m){
+    b+='<div class="row" style="justify-content:space-between;padding:6px 0;gap:8px"><span>'+esc(m)+'</span>'+(own?'<button class="btn sm danger" data-act="member-del" data-id="'+esc(m)+'">Retirer</button>':'')+'</div>';
+  });
+  if(!own)b+='<div class="actions" style="margin-top:12px"><button class="btn danger" data-act="leave">Quitter cette sortie</button></div>';
+  openSheet('Inviter sur la sortie',b);
+}
+function joinSheet(hid){
+  var h=state.hikes[hid];if(!h)return;
+  var gl=Object.keys(state.gear).map(function(k){return state.gear[k]}).sort(function(a,b){return CATS.indexOf(a.cat)-CATS.indexOf(b.cat)||a.name.localeCompare(b.name)});
+  var b='<form class="form" data-form="join" data-hike="'+esc(hid)+'"><p class="mute small">Tu rejoins <b>'+esc(h.name)+'</b>. Ton matériel coché est ajouté à ton sac pour la répartition.</p>'+
+    field('j-name','Ton prénom','<input id="j-name" name="name" required maxlength="40" value="'+esc(meMail().split('@')[0])+'">')+
+    field('j-kg','Poids du corps en kg (facultatif)','<input id="j-kg" name="kg" type="number" inputmode="decimal" min="20" max="250" step="any">');
+  if(gl.length){
+    b+='<div class="sec-h" style="margin:8px 0 0"><h3>Mon matériel</h3><button class="btn sm ghost" type="button" data-act="join-all" data-val="0">Tout décocher</button></div><div id="j-list">';
+    gl.forEach(function(g){b+='<label class="row" style="gap:10px;align-items:center;min-height:40px"><input type="checkbox" name="gear" value="'+esc(g.id)+'" checked style="width:auto;min-height:0"><span style="flex:1">'+esc(g.name)+'</span><span class="mono small">'+fmtW(g.g)+'</span></label>'});
+    b+='</div>';
+  }else b+='<p class="mute small">Ton inventaire est vide. Tu pourras ajouter ton matériel depuis l\'onglet Matériel puis « Ajouter du matériel » dans la sortie.</p>';
+  b+='<div class="actions"><button class="btn pri grow" type="submit">Rejoindre la sortie</button></div></form>';
+  openSheet('Rejoindre la sortie',b);
 }
 function gearSheet(gid,hid){
   var g=gid?state.gear[gid]:null;
@@ -896,7 +935,7 @@ function seedGear(){
     try{
       for(var k=0;k<SEED.length;k++){
         var s=SEED[k],id=uid();
-        await db.doc('gear/'+id).set({name:s[0],g:s[1],cat:CATS[s[2]],kind:s[3]});
+        await db.doc('gear/'+id).set({name:s[0],g:s[1],cat:CATS[s[2]],kind:s[3],owner:meMail()});
         await new Promise(function(r){setTimeout(r,90)});
       }
       toast('Équipement type ajouté. Ajuste les poids selon ton matériel.');
@@ -920,6 +959,26 @@ document.addEventListener('click',function(e){
     case 'pick-add':addPickItem(pickCtx.hikeId,id);break;
     case 'pick-new':gearSheet(null,pickCtx&&pickCtx.hikeId);break;
     case 'share':shareSheet(hid);break;
+    case 'invite':inviteSheet(hid);break;
+    case 'invite-link':mutateHike(hid,function(h){h.joinToken=randTok()},['joinToken']);inviteSheet(hid);break;
+    case 'invite-off':mutateHike(hid,function(h){h.joinToken=null},['joinToken']);inviteSheet(hid);break;
+    case 'invite-copy':
+      var lk=$('#inv-link');if(!lk)break;
+      if(navigator.share){navigator.share({title:'Gramme',text:'Rejoins ma sortie sur Gramme',url:lk.value}).catch(function(){})}
+      else if(navigator.clipboard)navigator.clipboard.writeText(lk.value).then(function(){toast('Lien copié.')},function(){lk.select();toast('Sélectionne le lien et copie-le.')});
+      else{lk.select();toast('Sélectionne le lien et copie-le.')}
+      break;
+    case 'member-del':
+      mutateHike(hid,function(h){h.members=(h.members||[]).filter(function(m){return m!==id});h.people.forEach(function(p){if(p.email===id)p.email=null})},['members','people']);
+      inviteSheet(hid);break;
+    case 'leave':
+      sb.rpc('leave_hike',{hid:hid}).then(function(r){
+        if(r.error){toast(errMsg(r.error));return}
+        delete state.hikes[hid];saveCache();closeSheet();location.hash='sorties';render();toast('Tu as quitté la sortie.');
+      });break;
+    case 'join-all':
+      var vv=t.dataset.val==='1';document.querySelectorAll('#j-list input[type=checkbox]').forEach(function(c){c.checked=vv});
+      t.dataset.val=vv?'0':'1';t.textContent=vv?'Tout décocher':'Tout cocher';break;
     case 'tent':
       mutateHike(hid,function(h){
         h.tent=!h.tent;
@@ -1011,7 +1070,7 @@ document.addEventListener('submit',function(e){
       closeSheet();
       mutateHike(id,function(h){h.name=name;h.date=String(d.get('date'));h.place=String(d.get('place')).trim();h.notes=String(d.get('notes')).trim();h.targetPct=tp},['name','date','place','notes','targetPct']);
     }else{
-      var nid=uid(),doc={name:name,date:String(d.get('date')),place:String(d.get('place')).trim(),notes:String(d.get('notes')).trim(),targetPct:tp,stats:null,profile:[],route:[],people:[],items:[],createdAt:Date.now()};
+      var nid=uid(),doc={name:name,date:String(d.get('date')),place:String(d.get('place')).trim(),notes:String(d.get('notes')).trim(),targetPct:tp,stats:null,profile:[],route:[],people:[],items:[],owner:meMail(),members:[],joinToken:null,createdAt:Date.now()};
       var src=state.hikes[d.get('copy')];
       if(src){
         var map={};
@@ -1025,18 +1084,27 @@ document.addEventListener('submit',function(e){
       enqueue('hikes/'+nid,function(){return db.doc('hikes/'+nid).set(doc)});
       closeSheet();location.hash='sortie-'+nid;render();
     }
+  }else if(kind==='join'){
+    var jn=String(d.get('name')).trim();if(!jn)return;var jkg=num(d.get('kg')),gids=d.getAll('gear'),jm=meMail();
+    closeSheet();
+    mutateHike(hid,function(h){
+      if(h.people.some(function(p){return p.email===jm}))return;
+      var pid=uid();h.people.push({id:pid,name:jn.slice(0,40),kg:jkg,email:jm});
+      gids.forEach(function(gid){var g=state.gear[gid];if(g)h.items.push({id:uid(),gearId:g.id,name:g.name,cat:g.cat,g:g.g,qty:1,kind:g.kind,who:pid,packed:false})});
+    },['people','items']);
+    toast('Tu as rejoint la sortie.');
   }else if(kind==='person'){
     var pn=String(d.get('name')).trim();if(!pn)return;var kg=num(d.get('kg'));
     closeSheet();
-    var me=d.get('me')==='1',meMail=userEmail;
+    var me=d.get('me')==='1',myMail=meMail();
     mutateHike(hid,function(h){
-      if(me)h.people.forEach(function(p){if(p.email===meMail)p.email=null});
-      if(id){h.people.forEach(function(p){if(p.id===id){p.name=pn;p.kg=kg;if(me)p.email=meMail;else if(p.email===meMail)p.email=null}})}
-      else h.people.push({id:uid(),name:pn,kg:kg,email:me?meMail:null});
+      if(me)h.people.forEach(function(p){if(p.email===myMail)p.email=null});
+      if(id){h.people.forEach(function(p){if(p.id===id){p.name=pn;p.kg=kg;if(me)p.email=myMail;else if(p.email===myMail)p.email=null}})}
+      else h.people.push({id:uid(),name:pn,kg:kg,email:me?myMail:null});
     },['people']);
   }else if(kind==='gear'){
     var gname=String(d.get('name')).trim(),gw=num(d.get('g'));if(!gname||gw==null)return;
-    var g={id:id||uid(),name:gname,g:gw,cat:String(d.get('cat')),kind:String(d.get('kind'))};
+    var g={id:id||uid(),name:gname,g:gw,cat:String(d.get('cat')),kind:String(d.get('kind')),owner:(id&&state.gear[id]&&state.gear[id].owner)||meMail()};
     state.gear[g.id]=g;saveGear(g);
     if(hid&&!id){closeSheet();pickCtx=null;addPickItem(hid,g.id);toast('Ajouté à la sortie et à l\'inventaire.')}
     else{
@@ -1123,6 +1191,10 @@ function subscribe(){
       var o=Object.assign({id:x.id},v);o.people=o.people||[];o.items=o.items||[];m[x.id]=o;
     });
     state.hikes=m;ready('hikes');saveCache();scheduleRender();
+    if(state.joinHike&&m[state.joinHike]){
+      var jid=state.joinHike;state.joinHike=null;
+      if(!m[jid].people.some(function(p){return p.email&&p.email===meMail()}))setTimeout(function(){joinSheet(jid)},80);
+    }
   },function(){ready('hikes');scheduleRender()}));
 }
 function teardown(){
@@ -1130,12 +1202,38 @@ function teardown(){
   state.gear={};state.hikes={};state.ready={gear:false,hikes:false};state.slow=false;
   try{localStorage.removeItem(CACHE_KEY)}catch(e){}
 }
+var JOIN_KEY='gramme-join';
+function pendingJoin(){try{return JSON.parse(localStorage.getItem(JOIN_KEY)||'null')}catch(e){return null}}
+function capturePending(){
+  var m=/^#rejoindre-([A-Za-z0-9]+)\.([a-f0-9]{8,64})$/.exec(location.hash||'');
+  if(!m)return false;
+  try{localStorage.setItem(JOIN_KEY,JSON.stringify({id:m[1],tok:m[2]}))}catch(e){}
+  try{history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}
+  return true;
+}
+function tryJoin(){
+  var pj=pendingJoin();if(!pj||!sb)return Promise.resolve(false);
+  return sb.rpc('join_hike',{hid:pj.id,tok:pj.tok}).then(function(r){
+    try{localStorage.removeItem(JOIN_KEY)}catch(e){}
+    if(r.error){toast('Invitation invalide ou désactivée.');return false}
+    state.joinHike=pj.id;return true;
+  },function(){toast('Connexion impossible : l\'invitation sera retentée plus tard.');return false});
+}
+function resubscribe(){
+  unsubs.forEach(function(u){try{u()}catch(e){}});unsubs=[];subscribed=false;
+  state.ready={gear:false,hikes:false};subscribe();render();
+}
+function joinNow(){tryJoin().then(function(ok){if(ok){location.hash='sortie-'+state.joinHike;resubscribe()}})}
 function enter(sess){
   userEmail=(sess&&sess.user&&sess.user.email)||'';
-  state.auth='in';loadCache();render();subscribe();
-  sb.rpc('is_allowed').then(function(r){
-    if(!r.error&&r.data===false){state.auth='denied';teardown();render()}
-  },function(){});
+  state.auth='in';loadCache();render();
+  (pendingJoin()?tryJoin():Promise.resolve(false)).then(function(ok){
+    if(ok)location.hash='sortie-'+state.joinHike;
+    subscribe();
+    sb.rpc('is_allowed').then(function(r){
+      if(!r.error&&r.data===false){state.auth='denied';teardown();render()}
+    },function(){});
+  });
 }
 function doAuth(mode,email,password){
   if(!email||password.length<8){toast('Saisis ton e-mail et un mot de passe de 8 caractères minimum.');return}
@@ -1172,7 +1270,7 @@ function accountSheet(){
 }
 
 /* ---------- démarrage ---------- */
-window.addEventListener('hashchange',function(){closeSheet();render();window.scrollTo(0,0)});
+window.addEventListener('hashchange',function(){var c=capturePending();if(c&&state.auth==='in'){joinNow();return}closeSheet();render();window.scrollTo(0,0)});
 window.addEventListener('online',function(){render()});
 window.addEventListener('offline',function(){render()});
 function boot(){
@@ -1187,6 +1285,7 @@ function boot(){
     if(sess)enter(sess);else{state.auth='out';render()}
   },function(){state.auth='out';render()});
 }
+capturePending();
 render();
 boot();
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){

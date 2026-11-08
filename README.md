@@ -57,3 +57,8 @@ Pour retirer quelqu'un, supprime sa ligne. Tous les invités voient et modifient
 | `schema.sql` | Tables, règles d'accès et fonctions à exécuter une fois |
 | `sw.js`, `manifest.webmanifest` | Installation sur l'écran d'accueil et mode hors ligne |
 | `icon.svg`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` | Icônes |
+
+## Mise à jour v2 : sorties privées et partage par lien
+
+Colle une seule fois le contenu de `schema-v2.sql` dans Supabase > SQL Editor, puis « Run ».
+Ensuite, chaque compte voit seulement son matériel et ses sorties. Pour inviter un ami : ouvre la sortie, touche « Inviter », copie le lien et envoie-le. L'ami crée son compte, rejoint la sortie et ajoute son matériel.
