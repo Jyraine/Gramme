@@ -14,14 +14,9 @@ Tout est en HTML, CSS et JavaScript, sans outil de compilation. Les données son
 1. Dans Supabase, ouvre **SQL Editor**.
 2. Ouvre `schema.sql` de ce dépôt, remplace l'adresse tout en bas (`remplace-par-ton-adresse@exemple.fr`) par la tienne, copie tout le contenu dans l'éditeur et clique **Run**.
 
-### 3. Afficher un code dans l'e-mail de connexion
-Gramme connecte par code reçu par e-mail (plus fiable que le lien sur iPhone).
-1. **Authentication**, puis **Email Templates**.
-2. Dans les modèles **Magic Link** et **Confirm signup**, remplace le corps du message par :
-   ```html
-   <h2>Ton code Gramme</h2>
-   <p>Saisis ce code dans l'application : <b>{{ .Token }}</b></p>
-   ```
+### 3. Réglages de connexion
+Gramme connecte avec une **adresse e-mail et un mot de passe**. Chaque personne autorisée clique une fois sur « Créer mon compte », confirme son adresse avec le lien reçu par e-mail, puis se connecte normalement. Les e-mails de Supabase par défaut conviennent, il n'y a rien à modifier.
+1. **Authentication**, puis **URL Configuration** : mets l'adresse de ton site GitHub Pages dans **Site URL** (étape 5), sinon le lien de confirmation pointera vers une adresse locale.
 
 ### 4. Relier l'application à Supabase
 1. **Project Settings**, puis **API**.
@@ -37,18 +32,19 @@ Gramme connecte par code reçu par e-mail (plus fiable que le lien sur iPhone).
 ### 6. Installer sur l'iPhone
 1. Ouvre l'adresse dans **Safari**.
 2. Touche **Partager**, puis **Sur l'écran d'accueil**.
-3. Connecte-toi avec ton adresse e-mail et le code reçu.
+3. Crée ton compte (première fois) ou connecte-toi avec ton adresse e-mail et ton mot de passe.
 
 ## Inviter des amis
 Seules les adresses de la table `allowed_emails` peuvent lire et écrire. Pour en ajouter une :
 1. Supabase, **Table Editor**, table `allowed_emails`, **Insert row**.
-2. Saisis l'adresse de l'ami. Il peut ensuite se connecter lui-même avec cette adresse.
+2. Saisis l'adresse de l'ami. Il crée ensuite son compte lui-même depuis l'application avec cette adresse.
 
 Pour retirer quelqu'un, supprime sa ligne. Tous les invités voient et modifient les mêmes sorties et le même inventaire.
 
 ## À savoir
 - **Hors ligne** : l'application s'ouvre et affiche les dernières données enregistrées. Les modifications demandent une connexion.
-- **E-mails** : l'envoi intégré de Supabase est limité à quelques messages par heure. Pour un groupe plus grand, configure un envoi personnalisé (**Authentication**, **SMTP Settings**).
+- **E-mails** : l'envoi intégré de Supabase est limité à quelques messages par heure, ce qui suffit pour confirmer les comptes de quelques amis. Pour un groupe plus grand ou pour modifier le texte des e-mails, configure un envoi personnalisé (**Authentication**, **Emails**, **SMTP Settings**).
+- **Mot de passe oublié** : pas encore géré dans l'application. En cas d'oubli, supprime l'utilisateur dans Supabase (**Authentication**, **Users**) et recrée le compte.
 - **Pause du projet** : un projet Supabase gratuit sans aucune activité pendant une semaine est mis en pause. Il se relance en un clic depuis le tableau de bord, sans perte de données.
 - **Nom de domaine** : pour une adresse à toi (par exemple `gramme.fr`), achète le domaine chez un registraire, puis renseigne-le dans **Settings > Pages > Custom domain**.
 - **Sauvegarde** : pense à exporter de temps en temps tes tables depuis le **Table Editor** de Supabase.

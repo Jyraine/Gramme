@@ -207,7 +207,7 @@ var SEED=[
 
 /* ---------- état ---------- */
 var db=null, canWrite=true;
-var state={gear:{},hikes:{},ready:{gear:false,hikes:false},slow:false,auth:'boot',codeSent:false,loginEmail:'',filter:'all',q:''};
+var state={gear:{},hikes:{},ready:{gear:false,hikes:false},slow:false,auth:'boot',signupDone:false,loginEmail:'',filter:'all',q:''};
 var inflight={};
 var pickCtx=null; /* {hikeId,q} quand la feuille d'ajout est ouverte */
 
@@ -604,12 +604,14 @@ function viewAuth(){
   if(a==='setup')return '<div class="auth card"><h1>Configuration</h1><p class="mute">Renseigne l\'adresse et la clé de ton projet Supabase dans le fichier <b>config.js</b>, puis recharge la page. Les étapes sont dans le README.</p></div>';
   if(a==='denied')return '<div class="auth card"><h1>Accès à valider</h1><p class="mute">L\'adresse <b>'+esc(userEmail)+'</b> n\'est pas encore autorisée. Demande à la personne qui gère Gramme de l\'ajouter, puis reconnecte-toi.</p><div class="actions"><button class="btn" data-act="signout">Se déconnecter</button></div></div>';
   if(a==='out'){
-    if(!state.codeSent)return '<div class="auth"><h1>Connexion</h1><p class="mute" style="margin-bottom:14px">Tes sorties et ton matériel, partagés avec ceux que tu invites. Entre ton adresse e-mail pour recevoir un code.</p>'+
-      '<form class="form" data-form="login-email">'+field('l-mail','Adresse e-mail','<input id="l-mail" name="email" type="email" inputmode="email" autocomplete="email" required value="'+esc(state.loginEmail)+'">')+
-      '<button class="btn pri" type="submit">Recevoir un code</button></form></div>';
-    return '<div class="auth"><h1>Code reçu</h1><p class="mute" style="margin-bottom:14px">Un code a été envoyé à <b>'+esc(state.loginEmail)+'</b>. Pense à regarder les courriers indésirables.</p>'+
-      '<form class="form" data-form="login-code">'+field('l-code','Code','<input id="l-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,10}" required>')+
-      '<button class="btn pri" type="submit">Se connecter</button><button class="btn ghost" type="button" data-act="login-reset">Changer d\'adresse</button></form></div>';
+    var info=state.signupDone?'<div class="banner" style="margin-bottom:12px;border-color:var(--ok);color:var(--ok)">Compte créé. Ouvre le lien de confirmation reçu par e-mail (pense aux courriers indésirables), puis reviens te connecter ici.</div>':'';
+    return '<div class="auth"><h1>Connexion</h1><p class="mute" style="margin-bottom:14px">Tes sorties et ton matériel, partagés avec ceux que tu invites. Utilise l\'adresse e-mail autorisée.</p>'+info+
+      '<form class="form" data-form="login">'+
+      field('l-mail','Adresse e-mail','<input id="l-mail" name="email" type="email" inputmode="email" autocomplete="email" required value="'+esc(state.loginEmail)+'">')+
+      field('l-pass','Mot de passe (8 caractères minimum)','<input id="l-pass" name="password" type="password" autocomplete="current-password" minlength="8" required>')+
+      '<button class="btn pri" type="submit" name="mode" value="signin">Se connecter</button>'+
+      '<button class="btn" type="submit" name="mode" value="signup" formnovalidate>Créer mon compte</button>'+
+      '</form><p class="mute small" style="margin-top:12px">Première visite : choisis « Créer mon compte » avec l\'adresse que la personne qui gère Gramme a autorisée.</p></div>';
   }
   return '<div class="card empty"><p class="mute">Chargement…</p></div>';
 }
@@ -781,7 +783,6 @@ document.addEventListener('click',function(e){
     case 'close':closeSheet();break;
     case 'account':accountSheet();break;
     case 'signout':signOut();break;
-    case 'login-reset':state.codeSent=false;render();break;
     case 'new-hike':hikeSheet(null);break;
     case 'edit-hike':hikeSheet(hid);break;
     case 'new-person':personSheet(hid,null);break;
@@ -843,8 +844,10 @@ document.addEventListener('submit',function(e){
   var f=e.target;if(!f.dataset||!f.dataset.form)return;
   e.preventDefault();
   var d=new FormData(f),kind=f.dataset.form,id=f.dataset.id,hid=f.dataset.hike;
-  if(kind==='login-email'){sendCode(String(d.get('email')).trim());return}
-  if(kind==='login-code'){verifyCode(String(d.get('code')).trim());return}
+  if(kind==='login'){
+    var sub=e.submitter&&e.submitter.value;
+    doAuth(sub==='signup'?'signup':'signin',String(d.get('email')).trim(),String(d.get('password')));return;
+  }
   if(!db){toast('Connexion nécessaire pour modifier.');return}
   if(kind==='hike'){
     var name=String(d.get('name')).trim();if(!name)return;
@@ -976,24 +979,32 @@ function enter(sess){
     if(!r.error&&r.data===false){state.auth='denied';teardown();render()}
   },function(){});
 }
-function sendCode(email){
-  if(!email)return;
+function doAuth(mode,email,password){
+  if(!email||password.length<8){toast('Saisis ton e-mail et un mot de passe de 8 caractères minimum.');return}
   state.loginEmail=email;
-  sb.auth.signInWithOtp({email:email,options:{shouldCreateUser:true}}).then(function(r){
-    if(r.error){toast(/rate|seconds|limit/i.test(r.error.message||'')?'Trop de demandes : attends une minute avant de réessayer.':'Envoi impossible : '+(r.error.message||'réessaie.'));return}
-    state.codeSent=true;render();
-  },function(){toast('Envoi impossible : vérifie ta connexion.')});
-}
-function verifyCode(code){
-  sb.auth.verifyOtp({email:state.loginEmail,token:code,type:'email'}).then(function(r){
-    if(r.error||!r.data||!r.data.session){toast('Code incorrect ou expiré.');return}
-    state.codeSent=false;enter(r.data.session);
-  },function(){toast('Vérification impossible : vérifie ta connexion.')});
+  var redirect=location.origin+location.pathname;
+  var p=mode==='signup'
+    ?sb.auth.signUp({email:email,password:password,options:{emailRedirectTo:redirect}})
+    :sb.auth.signInWithPassword({email:email,password:password});
+  p.then(function(r){
+    if(r.error){
+      var m=String(r.error.message||'');
+      if(/confirm/i.test(m))toast('Confirme d\'abord ton adresse avec le lien reçu par e-mail.');
+      else if(/invalid login/i.test(m))toast('E-mail ou mot de passe incorrect. Première visite ? Choisis « Créer mon compte ».');
+      else if(/already|registered/i.test(m))toast('Ce compte existe déjà : utilise « Se connecter ».');
+      else if(/rate|seconds|limit/i.test(m))toast('Trop de demandes : attends quelques minutes avant de réessayer.');
+      else if(/password/i.test(m))toast('Mot de passe refusé : choisis-en un plus long ou moins courant.');
+      else toast('Connexion impossible : '+m);
+      return;
+    }
+    if(r.data&&r.data.session){enter(r.data.session);return}
+    state.signupDone=true;render();
+  },function(){toast('Connexion impossible : vérifie ta connexion internet.')});
 }
 function signOut(){
   closeSheet();
   sb.auth.signOut().then(function(){},function(){}).then(function(){
-    teardown();state.auth='out';state.codeSent=false;render();
+    teardown();state.auth='out';state.signupDone=false;render();
   });
 }
 function accountSheet(){
@@ -1008,7 +1019,7 @@ window.addEventListener('online',function(){render()});
 window.addEventListener('offline',function(){render()});
 function boot(){
   if(!CFG.supabaseUrl||!CFG.supabaseKey||!window.supabase){state.auth='setup';render();return}
-  sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+  sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   db=makeDb(sb);
   sb.auth.onAuthStateChange(function(ev){
     if(ev==='SIGNED_OUT'&&state.auth==='in'){teardown();state.auth='out';render()}
