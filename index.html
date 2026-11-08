@@ -475,6 +475,7 @@ function viewHike(id){
   var can=people.length>=2;
   out+='<div class="card act" style="margin-bottom:10px"><button class="btn pri" style="width:100%" data-act="balance"'+(can?'':' disabled')+'>Répartir automatiquement le poids</button>'+
     '<p class="mute small" style="margin-top:8px">'+(!can?'Ajoute au moins deux personnes pour répartir le matériel entre les sacs.':(todo?todo+' ligne'+(todo>1?'s':'')+' à répartir. Le poids du corps, s\'il est renseigné, sert à équilibrer la charge. Ce que tu attribues à la main ne bouge pas.':'Tout est déjà attribué. Ajoute du matériel, ou remets tout à répartir pour recalculer.'))+'</p>'+
+    (can&&people.some(function(p){return !p.kg})?'<p class="small" style="margin-top:6px;color:var(--warn)">Poids du corps à renseigner pour '+people.filter(function(p){return !p.kg}).map(function(p){return esc(p.name)}).join(', ')+' : touche leur plaque pour une répartition adaptée.</p>':'')+
     (can?'<button class="btn sm ghost" style="margin-top:6px" data-act="reset-assign">Tout remettre à répartir</button>':'')+'</div>';
   if(!people.length){
     out+='<div class="card mute">Ajoute les personnes qui partent (toi compris) pour répartir le poids. Le poids du corps est facultatif et sert à comparer la charge à '+target+' %.</div>';
@@ -508,19 +509,17 @@ function viewHike(id){
     var chips=[['all','Tout']].concat(people.map(function(p){return [p.id,p.name]})).concat([['none','À répartir']]);
     out+='<div class="chips" role="group" aria-label="Filtrer par personne" style="margin:0 0 4px">'+chips.map(function(x){
       return '<button class="chip" data-act="filter" data-id="'+esc(x[0])+'" aria-pressed="'+(f===x[0])+'">'+esc(x[1])+'</button>'}).join('')+'</div>';
-    out+='<div class="mute small" style="margin:8px 0 2px">'+c.done+' sur '+c.n+' lignes prêtes dans le sac</div>';
-    var shown=items.filter(function(i){
-      if(f==='all')return true;
-      var known=i.who&&people.some(function(p){return p.id===i.who});
-      if(f==='none')return !known;
-      return i.who===f;
-    });
+    var shown=items.filter(function(i){return visible(h,i)});
+    var allOn=shown.length>0&&shown.every(function(i){return i.packed});
+    out+='<div class="mute small" style="margin:8px 0 2px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span>'+c.done+' sur '+c.n+' lignes prêtes dans le sac</span>'+
+      (shown.length?'<button class="btn sm ghost act" data-act="check-all" data-scope="*" data-val="'+(allOn?0:1)+'">'+(allOn?'Tout décocher':'Tout cocher')+'</button>':'')+'</div>';
     var groups={};shown.forEach(function(i){var k=CATS.indexOf(i.cat)<0?'Divers':i.cat;(groups[k]=groups[k]||[]).push(i)});
     if(!shown.length)out+='<p class="mute" style="margin-top:12px">Rien dans cette sélection.</p>';
     CATS.forEach(function(cat,ix){
       var g=groups[cat];if(!g)return;
       var sub=0;g.forEach(function(i){if(i.kind!=='worn')sub+=(i.g||0)*(i.qty||1)});
-      out+='<div class="group"><div class="group-h"><i class="dot" style="background:var(--c'+ix+')"></i><h3>'+esc(cat)+'</h3><span class="mono small">'+fmtW(sub)+'</span></div>';
+      var gOn=g.every(function(i){return i.packed});
+      out+='<div class="group"><div class="group-h"><i class="dot" style="background:var(--c'+ix+')"></i><h3>'+esc(cat)+'</h3><button class="btn sm ghost act" data-act="check-all" data-scope="'+esc(cat)+'" data-val="'+(gOn?0:1)+'">'+(gOn?'Tout décocher':'Tout cocher')+'</button><span class="mono small">'+fmtW(sub)+'</span></div>';
       g.forEach(function(i){
         var opts='<option value="">'+(i.kind==='worn'?'Personne':'À répartir')+'</option>'+people.map(function(p){return '<option value="'+esc(p.id)+'"'+(i.who===p.id?' selected':'')+'>'+esc(p.name)+'</option>'}).join('');
         var w=(i.g||0)*(i.qty||1);
@@ -535,6 +534,12 @@ function viewHike(id){
   }
   out+='</section>';
   return out;
+}
+function visible(h,i){
+  var f=state.filter;if(f==='all')return true;
+  var known=i.who&&(h.people||[]).some(function(p){return p.id===i.who});
+  if(f==='none')return !known;
+  return i.who===f;
 }
 function gearListHtml(){
   var q=state.q.trim().toLowerCase();
@@ -798,8 +803,21 @@ document.addEventListener('click',function(e){
     case 'gear-edit':gearSheet(id,null);break;
     case 'seed':seedGear();break;
     case 'filter':state.filter=id;render();break;
+    case 'check-all':
+      var scope=t.dataset.scope,val=t.dataset.val==='1';
+      mutateHike(hid,function(h){h.items.forEach(function(i){
+        if(!visible(h,i))return;
+        var cat=CATS.indexOf(i.cat)<0?'Divers':i.cat;
+        if(scope==='*'||scope===cat)i.packed=val;
+      })},['items']);break;
     case 'balance':
-      mutateHike(hid,function(h){if(!balance(h,false))toast('Rien à répartir : tout est déjà attribué.')},['items']);break;
+      mutateHike(hid,function(h){
+        var miss=h.people.filter(function(p){return !p.kg});
+        if(!balance(h,false)){toast('Rien à répartir : tout est déjà attribué.');return}
+        if(!miss.length)toast('Répartition faite selon le poids du corps.');
+        else if(miss.length===h.people.length)toast('Poids du corps non renseigné : parts égales entre les sacs.');
+        else toast('Poids du corps manquant pour '+miss.map(function(p){return p.name}).join(', ')+' : poids moyen utilisé.');
+      },['items']);break;
     case 'reset-assign':
       mutateHike(hid,function(h){h.items.forEach(function(i){if(i.kind!=='worn')i.who=''})},['items']);break;
     case 'copy-share':
