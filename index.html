@@ -637,7 +637,7 @@ function viewHike(id){
       mine.forEach(function(i){var k=CATS.indexOf(i.cat)<0?'Divers':i.cat;(cats[k]=cats[k]||[]).push(i)});
       var body='';
       if(!mine.length)body='<p class="mute small" style="margin:8px 0 0">Aucun matériel attribué pour l\'instant.</p>';
-      CATS.concat(['Divers']).forEach(function(k,ix){
+      CATS.forEach(function(k,ix){
         if(!cats[k])return;
         body+='<div class="group-h" style="margin-top:10px"><i class="dot" style="background:var(--c'+Math.min(ix,9)+')"></i><h3>'+esc(k)+'</h3><span class="mono small">'+fmtW(cats[k].reduce(function(a,i){return a+(i.g||0)*(i.qty||1)},0))+'</span></div>';
         cats[k].forEach(function(i){
@@ -751,7 +751,7 @@ function viewBag(id){
   if(!items.length)out+='<div class="card empty"><p class="mute">Le sac est vide. Pioche dans ton inventaire ou crée du matériel à la volée.</p></div>';
   else{
     var groups={};items.forEach(function(i){var g=state.gear[i.gid],k=CATS.indexOf(g.cat)<0?'Divers':g.cat;(groups[k]=groups[k]||[]).push(i)});
-    CATS.concat(['Divers']).forEach(function(cat,ix){
+    CATS.forEach(function(cat,ix){
       var g=groups[cat];if(!g)return;
       var sub=g.reduce(function(a,i){return a+(state.gear[i.gid].g||0)*(i.qty||1)},0);
       out+='<div class="group"><div class="group-h"><i class="dot" style="background:var(--c'+Math.min(ix,9)+')"></i><h3>'+esc(cat)+'</h3><span class="mono small">'+fmtW(sub)+'</span></div>';
