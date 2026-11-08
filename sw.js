@@ -1,8 +1,7 @@
 // Gramme : mode hors ligne. Réseau d'abord, puis copie locale si le réseau manque.
-const CACHE = 'gramme-v2';
+const CACHE = 'gramme-v3';
 const SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
-  'fonts/big-shoulders-display-latin-700-normal.woff2','fonts/big-shoulders-display-latin-800-normal.woff2','fonts/big-shoulders-display-latin-900-normal.woff2',
-  'fonts/barlow-latin-400-normal.woff2','fonts/barlow-latin-500-normal.woff2','fonts/barlow-latin-600-normal.woff2',
+  'fonts/bricolage-grotesque-latin-wdth-normal.woff2','fonts/atkinson-hyperlegible-next-latin-400-normal.woff2','fonts/atkinson-hyperlegible-next-latin-500-normal.woff2','fonts/atkinson-hyperlegible-next-latin-700-normal.woff2',
   'fonts/ibm-plex-mono-latin-400-normal.woff2','fonts/ibm-plex-mono-latin-500-normal.woff2'];
 
 self.addEventListener('install', (e) => {
