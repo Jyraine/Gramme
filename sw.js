@@ -1,5 +1,5 @@
 // Gramme : mode hors ligne. Réseau d'abord, puis copie locale si le réseau manque.
-const CACHE = 'gramme-v11';
+const CACHE = 'gramme-v12';
 const SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
   'fonts/inter-latin-wght-normal.woff2'];
 

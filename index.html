@@ -1646,7 +1646,7 @@ function accountSheet(){
     '<form class="form" data-form="pseudo">'+field('a-pseudo','Ton pseudo','<input id="a-pseudo" name="pseudo" maxlength="30" autocomplete="nickname" placeholder="'+esc((userEmail||'').split('@')[0])+'" value="'+esc(userPseudo)+'">')+'<button class="btn sm" type="submit" style="align-self:flex-start">Enregistrer le pseudo</button><p class="mute small">Proposé par défaut quand tu rejoins une sortie ou que tu t\'ajoutes à une liste.</p></form>'+
     '<div><div class="mute small" style="margin-bottom:6px;font-weight:600">Apparence</div><div class="chips" role="group" aria-label="Apparence" style="margin:0">'+
     [['auto','Auto'],['light','Clair'],['dark','Sombre']].map(function(x){return '<button class="chip" type="button" data-act="theme" data-val="'+x[0]+'" aria-pressed="'+(tp===x[0])+'">'+x[1]+'</button>'}).join('')+'</div></div>'+
-    '<p class="mute small">Pour inviter un ami, ajoute son adresse e-mail dans la table allowed_emails de Supabase (voir le README).</p>'+
+    '<p class="mute small">Pour inviter un ami, ouvre une sortie et touche « Inviter » : il reçoit un lien pour la rejoindre.</p>'+
     '<div class="actions"><button class="btn danger grow" data-act="signout">Se déconnecter</button></div></div>',false);
 }
 
