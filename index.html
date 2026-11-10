@@ -314,6 +314,8 @@ var SEED=[
 
 /* ---------- état ---------- */
 var db=null, canWrite=true;
+var userPseudo='';
+function myName(){return userPseudo||(meMail()||'').split('@')[0]}
 var state={gear:{},bags:{},hikes:{},ready:{gear:false,hikes:false},slow:false,auth:'boot',signupDone:false,loginEmail:'',filter:'all',q:''};
 var inflight={};
 var pickCtx=null; /* {hikeId|bagId,q} quand la feuille d'ajout est ouverte */
@@ -936,6 +938,7 @@ function viewAuth(){
     return '<div class="auth"><h1>Connexion</h1><p class="mute" style="margin-bottom:14px">Tes sorties et ton matériel restent privés. Tu choisis ce que tu partages, sortie par sortie.</p>'+inv+info+
       '<form class="form" data-form="login">'+
       field('l-mail','Adresse e-mail','<input id="l-mail" name="email" type="email" inputmode="email" autocomplete="email" required value="'+esc(state.loginEmail)+'">')+
+      field('l-pseudo','Pseudo (facultatif, pour créer un compte)','<input id="l-pseudo" name="pseudo" maxlength="30" autocomplete="nickname" placeholder="Comment tes amis te voient">')+
       field('l-pass','Mot de passe (8 caractères minimum)','<input id="l-pass" name="password" type="password" autocomplete="current-password" minlength="8" required>')+
       '<button class="btn pri" type="submit" name="mode" value="signin">Se connecter</button>'+
       '<button class="btn" type="submit" name="mode" value="signup" formnovalidate>Créer mon compte</button>'+
@@ -1009,7 +1012,7 @@ function personSheet(hid,pid){
   var h=state.hikes[hid];if(!h)return;
   var p=pid?h.people.filter(function(x){return x.id===pid})[0]:null;
   var b='<form class="form" data-form="person" data-hike="'+esc(hid)+'" data-id="'+esc(pid||'')+'">'+
-    field('p-name','Prénom','<input id="p-name" name="name" required maxlength="40" value="'+esc(p?p.name:'')+'">')+
+    field('p-name','Prénom','<input id="p-name" name="name" required maxlength="40" value="'+esc(p?p.name:(!(h.people||[]).some(function(x){return x.email&&x.email===userEmail})&&userPseudo?userPseudo:''))+'">')+
     field('p-kg','Poids du corps en kg (facultatif)','<input id="p-kg" name="kg" type="number" inputmode="decimal" min="20" max="250" step="any" value="'+(p&&p.kg?p.kg:'')+'">')+
     '<label class="row" style="gap:10px;align-items:center;min-height:44px"><input type="checkbox" name="me" value="1" style="width:auto;min-height:0"'+(p&&p.email&&p.email===userEmail?' checked':'')+'><span>C\'est mon compte ('+esc(userEmail)+')</span></label>'+
     '<div class="actions"><button class="btn pri grow" type="submit">Enregistrer</button>'+(p?'<button class="btn danger" type="button" data-act="del-person" data-id="'+esc(pid)+'">Retirer</button>':'')+'</div></form>';
@@ -1038,7 +1041,7 @@ function joinSheet(hid){
   var h=state.hikes[hid];if(!h)return;
   var gl=Object.keys(state.gear).map(function(k){return state.gear[k]}).sort(function(a,b){return CATS.indexOf(a.cat)-CATS.indexOf(b.cat)||a.name.localeCompare(b.name)});
   var b='<form class="form" data-form="join" data-hike="'+esc(hid)+'"><p class="mute small">Tu rejoins <b>'+esc(h.name)+'</b>. Ton matériel coché est ajouté à ton sac pour la répartition.</p>'+
-    field('j-name','Ton prénom','<input id="j-name" name="name" required maxlength="40" value="'+esc(meMail().split('@')[0])+'">')+
+    field('j-name','Ton prénom','<input id="j-name" name="name" required maxlength="40" value="'+esc(myName())+'">')+
     field('j-kg','Poids du corps en kg (facultatif)','<input id="j-kg" name="kg" type="number" inputmode="decimal" min="20" max="250" step="any">');
   var bl=Object.keys(state.bags).map(function(k){return state.bags[k]});
   if(gl.length&&bl.length)b+=field('j-bag','Partir avec un de mes sacs','<select id="j-bag" name="bag" data-act="join-bag"><option value="">Choisir le matériel à la main</option>'+bl.map(function(x){return '<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>'}).join('')+'</select>');
@@ -1338,7 +1341,15 @@ document.addEventListener('submit',function(e){
   var d=new FormData(f),kind=f.dataset.form,id=f.dataset.id,hid=f.dataset.hike,bid=f.dataset.bag;
   if(kind==='login'){
     var sub=e.submitter&&e.submitter.value;
-    doAuth(sub==='signup'?'signup':'signin',String(d.get('email')).trim(),String(d.get('password')));return;
+    doAuth(sub==='signup'?'signup':'signin',String(d.get('email')).trim(),String(d.get('password')),String(d.get('pseudo')||'').trim().slice(0,30));return;
+  }
+  if(kind==='pseudo'){
+    var np=String(d.get('pseudo')||'').trim().slice(0,30);
+    sb.auth.updateUser({data:{pseudo:np}}).then(function(r){
+      if(r.error){toast('Pseudo non enregistré : réessaie dans un instant.');return}
+      userPseudo=np;toast(np?'Pseudo enregistré : '+np+'.':'Pseudo retiré.');
+    },function(){toast('Hors ligne : pseudo non enregistré.')});
+    return;
   }
   if(!db){toast('Connexion nécessaire pour modifier.');return}
   if(kind==='hike'){
@@ -1510,7 +1521,7 @@ function resubscribe(){
 }
 function joinNow(){tryJoin().then(function(ok){if(ok){location.hash='sortie-'+state.joinHike;resubscribe()}})}
 function enter(sess){
-  userEmail=(sess&&sess.user&&sess.user.email)||'';
+  userEmail=(sess&&sess.user&&sess.user.email)||'';userPseudo=String((sess&&sess.user&&sess.user.user_metadata&&sess.user.user_metadata.pseudo)||'');
   state.auth='in';loadCache();render();
   (pendingJoin()?tryJoin():Promise.resolve(false)).then(function(ok){
     if(ok)location.hash='sortie-'+state.joinHike;
@@ -1520,12 +1531,12 @@ function enter(sess){
     },function(){});
   });
 }
-function doAuth(mode,email,password){
+function doAuth(mode,email,password,pseudo){
   if(!email||password.length<8){toast('Saisis ton e-mail et un mot de passe de 8 caractères minimum.');return}
   state.loginEmail=email;
   var redirect=location.origin+location.pathname;
   var p=mode==='signup'
-    ?sb.auth.signUp({email:email,password:password,options:{emailRedirectTo:redirect}})
+    ?sb.auth.signUp({email:email,password:password,options:{emailRedirectTo:redirect,data:pseudo?{pseudo:pseudo}:{}}})
     :sb.auth.signInWithPassword({email:email,password:password});
   p.then(function(r){
     if(r.error){
@@ -1563,6 +1574,7 @@ function applyTheme(t){
 function accountSheet(){
   var tp=themePref();
   openSheet('Compte','<div class="form"><p>Connecté avec <b>'+esc(userEmail)+'</b></p>'+
+    '<form class="form" data-form="pseudo">'+field('a-pseudo','Ton pseudo','<input id="a-pseudo" name="pseudo" maxlength="30" autocomplete="nickname" placeholder="'+esc((userEmail||'').split('@')[0])+'" value="'+esc(userPseudo)+'">')+'<button class="btn sm" type="submit" style="align-self:flex-start">Enregistrer le pseudo</button><p class="mute small">Proposé par défaut quand tu rejoins une sortie ou que tu t\'ajoutes à une liste.</p></form>'+
     '<div><div class="mute small" style="margin-bottom:6px;font-weight:600">Apparence</div><div class="chips" role="group" aria-label="Apparence" style="margin:0">'+
     [['auto','Auto'],['light','Clair'],['dark','Sombre']].map(function(x){return '<button class="chip" type="button" data-act="theme" data-val="'+x[0]+'" aria-pressed="'+(tp===x[0])+'">'+x[1]+'</button>'}).join('')+'</div></div>'+
     '<p class="mute small">Pour inviter un ami, ajoute son adresse e-mail dans la table allowed_emails de Supabase (voir le README).</p>'+
