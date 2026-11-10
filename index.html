@@ -522,15 +522,54 @@ function effortOf(tr){
   }
   return e;
 }
-function suggestNights(tr){
-  var E=effortOf(tr);E=E[E.length-1];
-  return Math.min(7,Math.max(1,Math.ceil(E/18)-1));
+/* ---- Planning horaire : lever/coucher du soleil, heure de départ, durée en demi-journées ---- */
+function hhmm(m){m=((Math.round(m)%1440)+1440)%1440;return ('0'+Math.floor(m/60)).slice(-2)+':'+('0'+m%60).slice(-2)}
+function clockMin(v){var m=/^(\d{1,2}):(\d{2})/.exec(v||'');return m?(+m[1])*60+(+m[2]):480}
+/* Coucher du soleil en minutes depuis minuit, heure locale de l'appareil (algorithme « Almanac for Computers ») */
+function sunsetMin(dateStr,lat,lon){
+  var d=dateStr?new Date(dateStr+'T12:00:00'):new Date();if(isNaN(d))d=new Date();
+  var R=Math.PI/180,N=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5),lh=lon/15,t=N+((18-lh)/24);
+  var M=0.9856*t-3.289,L=M+1.916*Math.sin(M*R)+0.020*Math.sin(2*M*R)+282.634;L=((L%360)+360)%360;
+  var RA=Math.atan(0.91764*Math.tan(L*R))/R;RA=((RA%360)+360)%360;
+  RA=(RA+(Math.floor(L/90)*90-Math.floor(RA/90)*90))/15;
+  var sd=0.39782*Math.sin(L*R),cd=Math.cos(Math.asin(sd)),ch=(Math.cos(90.833*R)-sd*Math.sin(lat*R))/(cd*Math.cos(lat*R));
+  if(ch>1)return null;if(ch<-1)return 1439;
+  var H=Math.acos(ch)/R/15,T=H+RA-0.06571*t-6.622,ut=(((T-lh)%24)+24)%24;
+  return ((Math.round(ut*60-d.getTimezoneOffset())%1440)+1440)%1440;
 }
-function findCamps(tr,nights){
+function hikePos(h){var p=h.track&&h.track[0];return p&&p[2]!=null?{lat:p[2],lon:p[3]}:{lat:46,lon:6}}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+var MORNING=480,DUSK_MARGIN=60,DAY_MAX=600;
+/* Capacité de marche (minutes, pauses comprises) : du départ jusqu'à 1 h avant le coucher du soleil, 10 h au plus */
+function planBase(h){
+  var tr=h.track,eff=effortOf(tr),E=eff[eff.length-1]||1,mv=h.stats&&h.stats.movMin,q=(mv?mv/E:15)*1.2,p=hikePos(h);
+  var sun=sunsetMin(h.date,p.lat,p.lon);if(sun==null)sun=1080;
+  var start=clockMin(h.startTime||'08:00');
+  return {E:E,q:q,sun:sun,start:start,
+    cap1:clamp(sun-DUSK_MARGIN-start,45,DAY_MAX),capFull:clamp(sun-DUSK_MARGIN-MORNING,180,DAY_MAX)};
+}
+function suggestDays(h){
+  var b=planBase(h),x=b.E*b.q/b.capFull;
+  return clamp(Math.round(x*2)/2,0.5,7);
+}
+function planDays(h){
+  var b=planBase(h),D=h.days||(h.nights!=null?h.nights+1:suggestDays(h));
+  D=clamp(Math.round(D*2)/2,0.5,7);
+  var N=Math.ceil(D-1e-9),fr=D-Math.floor(D),caps=[],k,tot=0;
+  for(k=1;k<=N;k++){var c=k===1?b.cap1:b.capFull;if(k===N&&N>1&&fr>1e-9)c*=fr;caps.push(c);tot+=c}
+  var fr2=[],acc=0;for(k=0;k<N-1;k++){acc+=caps[k];fr2.push(acc/tot)}
+  return {D:D,nights:N-1,fracs:fr2,base:b};
+}
+function applyPlan(h){
+  if(!h.track){h.camps=[];return}
+  var p=planDays(h);h.days=p.D;h.nights=p.nights;
+  h.camps=p.nights>0?findCamps(h.track,p.nights,p.fracs):[];
+}
+function findCamps(tr,nights,fracs){
   var n=tr.length,eff=effortOf(tr),E=eff[n-1],days=nights+1,step=E/days,w=step*0.3;
   var kmTot=tr[n-1][0],r=Math.max(0.25,2*kmTot/(n-1)),out=[],last=0,k,i,j;
   for(k=1;k<=nights;k++){
-    var tg=step*k,best=null;
+    var tg=fracs&&fracs[k-1]!=null?E*fracs[k-1]:step*k,best=null;
     for(i=1;i<n-1;i++){
       if(i<=last||Math.abs(eff[i]-tg)>w)continue;
       var km=tr[i][0];if(km<1||kmTot-km<1)continue;
@@ -575,30 +614,61 @@ var folded={};
 function fc(k){return folded[k]?' collapsed':''}
 function fold(k,label){return '<button class="fold" data-act="fold" data-sec="'+k+'" aria-expanded="'+(folded[k]?'false':'true')+'">'+esc(label)+'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>'}
 function campCard(h){
-  var n=h.nights||suggestNights(h.track),out='<section class="sec'+fc('biv')+'" id="sec-biv" aria-labelledby="s-biv"><div class="sec-h"><h2 id="s-biv">'+fold('biv','Bivouac')+'</h2>'+
+  var out='<section class="sec'+fc('biv')+'" id="sec-biv" aria-labelledby="s-biv"><div class="sec-h"><h2 id="s-biv">'+fold('biv','Bivouac')+'</h2>'+
     '<button class="chip act" data-act="tent" aria-pressed="'+(h.tent?'true':'false')+'">'+(h.tent?'✓ ':'')+'Je pars en tente</button></div>';
   if(!h.tent)return out+'<p class="mute small">Active « Je pars en tente » pour obtenir des emplacements de bivouac le long de la trace.</p></section>';
-  var opts='';for(var q=1;q<=7;q++)opts+='<option value="'+q+'"'+(q===n?' selected':'')+'>'+q+' nuit'+(q>1?'s':'')+'</option>';
-  out+='<div class="card"><div style="display:flex;gap:8px;align-items:center"><select data-act="nights" aria-label="Nombre de nuits" style="width:auto;flex:1">'+opts+'</select>'+
-    '<button class="btn sm act" data-act="camp-suggest">Recalculer</button></div>'+
-    '<p class="mute small" style="margin:8px 0">Chaque bivouac est placé vers la fin d\'une journée de marche (distance + 1 km par 100 m de D+), sur le passage le plus plat possible et hors crête.</p>';
+  var pl=planDays(h),pb=pl.base,D=pl.D,opts='';
+  for(var q=1;q<=14;q++){var dv=q/2;opts+='<option value="'+dv+'"'+(dv===D?' selected':'')+'>'+fmt(dv,1).replace('.0','').replace(',0','')+' jour'+(dv>1?'s':'')+'</option>'}
+  out+='<div class="card"><div class="two"><label class="f" style="font-size:13px">Durée<select data-act="days" aria-label="Durée en jours">'+opts+'</select></label>'+
+    '<label class="f" style="font-size:13px">Départ le jour 1<input type="time" data-act="start" aria-label="Heure de départ" value="'+esc(h.startTime||'08:00')+'"></label></div>'+
+    '<div class="mute small" style="margin:8px 0">☀ Coucher du soleil le '+esc(fmtDate(h.date))+' : <b>'+hhmm(pb.sun)+'</b>. Le départ des jours suivants est fixé à 08:00, et chaque étape vise une arrivée au moins 1 h avant la nuit. Un dernier jour en demi-journée (par exemple 2,5 jours) raccourcit la dernière étape.</div>'+
+    '<button class="btn sm act" data-act="camp-suggest">Recalculer</button>'+
+    '<p class="mute small" style="margin:8px 0">Chaque bivouac est placé sur le passage le plus plat possible, hors crête, au bout d\'une étape dimensionnée selon la lumière disponible (effort = distance + 1 km par 100 m de D+).</p>';
   var segs=daySegments(h),camps=h.camps||[];
   segs.forEach(function(sg,k){
-    out+='<div class="row" style="padding:8px 0;border-top:1px solid var(--line);justify-content:space-between"><div><b>Jour '+(k+1)+'</b></div><div class="mono small">'+fmt(sg.km,1)+' km'+(sg.hasEle?' · D+ '+fmt(sg.up,0)+' m':'')+' · ≈ '+fmtDur(sg.min)+'</div></div>';
+    var st=k===0?pb.start:MORNING,ar=st+sg.min*1.2,late=ar>pb.sun,tight=!late&&ar>pb.sun-45;
+    out+='<div class="row" style="padding:8px 0;border-top:1px solid var(--line);justify-content:space-between;align-items:flex-start"><div><b>Jour '+(k+1)+'</b><div class="mute small mono">'+hhmm(st)+' → '+hhmm(ar)+'</div></div><div class="mono small" style="text-align:right">'+fmt(sg.km,1)+' km'+(sg.hasEle?' · D+ '+fmt(sg.up,0)+' m':'')+'<br>≈ '+fmtDur(sg.min)+' en marche</div></div>';
+    if(late||tight)out+='<p class="small" style="margin:0 0 6px;color:var(--warn)">'+(late?'Arrivée après le coucher du soleil ('+hhmm(pb.sun)+') : prévoir la frontale ou ajouter une demi-journée.':'Arrivée juste avant la nuit : peu de marge pour monter la tente.')+'</p>';
     if(camps[k]){var c=camps[k];
-      out+='<div style="padding:8px 10px;margin-bottom:4px;border-radius:8px;background:var(--paper);border:1px solid var(--line)"><b>⛺ Nuit '+(k+1)+'</b> · km '+fmt(c.km,1)+(c.ele!=null?' · '+fmt(c.ele,0)+' m':'')+
+      out+='<div style="padding:8px 10px;margin-bottom:4px;border-radius:var(--r-tile);background:var(--paper)"><b>⛺ Nuit '+(k+1)+'</b> · km '+fmt(c.km,1)+(c.ele!=null?' · '+fmt(c.ele,0)+' m':'')+
       '<div class="mute small">'+campFlat(c.slope)+(c.slope!=null?' (pente ≈ '+fmt(c.slope,0)+' %)':'')+' · '+c.lat.toFixed(4)+', '+c.lon.toFixed(4)+'</div></div>';}
   });
-  out+='<div class="actions act" style="margin-top:8px"><button class="btn sm" data-act="camp-gpx"'+(camps.length?'':' disabled')+'>Télécharger les waypoints (GPX)</button></div>'+
+  out+='<div class="actions act" style="margin-top:8px"><button class="btn sm" data-act="camp-gpx"'+(camps.length?'':' disabled')+'>Exporter trace + bivouacs (GPX)</button></div>'+
     '<p class="mute small" style="margin-top:6px">Suggestion à vérifier sur place : point d\'eau, vent, réglementation du bivouac.</p></div></section>';
   return out;
 }
+function xmlEsc(v){return String(v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]})}
+/* GPX complet : la trace (<trk>) + les bivouacs (<wpt>). Beaucoup d'applis (COROS, Garmin, Komoot) refusent un fichier qui ne contient que des waypoints. */
 function campsGpx(h){
-  var x='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Gramme" xmlns="http://www.topografix.com/GPX/1/1">\n';
+  var x='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Gramme" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n';
+  x+='<metadata><name>'+xmlEsc(h.name||'Randonnée')+'</name></metadata>\n';
+  var pb=h.track&&h.track.length?planBase(h):null;
   (h.camps||[]).forEach(function(c,k){
-    x+='<wpt lat="'+c.lat+'" lon="'+c.lon+'">'+(c.ele!=null?'<ele>'+c.ele+'</ele>':'')+'<name>Bivouac nuit '+(k+1)+'</name><sym>Campground</sym></wpt>\n';
+    x+='<wpt lat="'+c.lat+'" lon="'+c.lon+'">'+(c.ele!=null?'<ele>'+c.ele+'</ele>':'')+'<name>Bivouac nuit '+(k+1)+'</name><desc>km '+fmt(c.km,1)+(pb?', coucher du soleil '+hhmm(pb.sun):'')+'</desc><sym>Campground</sym></wpt>\n';
   });
+  if(h.track&&h.track.length){
+    x+='<trk><name>'+xmlEsc(h.name||'Randonnée')+'</name><trkseg>\n';
+    h.track.forEach(function(p){if(p[2]==null)return;x+='<trkpt lat="'+p[2]+'" lon="'+p[3]+'">'+(p[1]!=null?'<ele>'+p[1]+'</ele>':'')+'</trkpt>\n'});
+    x+='</trkseg></trk>\n';
+  }
   return x+'</gpx>\n';
+}
+/* Sur iPhone : feuille de partage (Enregistrer dans Fichiers, ouvrir dans une autre appli). Ailleurs : téléchargement. */
+function exportGpx(h){
+  var name=(h.name||'rando').replace(/[^\w-]+/g,'-')+'-bivouacs.gpx',txt=campsGpx(h);
+  try{
+    var file=new File([txt],name,{type:'application/gpx+xml'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      navigator.share({files:[file],title:h.name||'Randonnée'}).catch(function(e){if(e&&e.name!=='AbortError')dl()});
+      return;
+    }
+  }catch(e){}
+  dl();
+  function dl(){
+    var url=URL.createObjectURL(new Blob([txt],{type:'application/octet-stream'})),an=document.createElement('a');
+    an.href=url;an.download=name;document.body.appendChild(an);an.click();an.remove();
+    setTimeout(function(){URL.revokeObjectURL(url)},4000);
+  }
 }
 
 /* ---------- dessins ---------- */
@@ -1244,16 +1314,12 @@ document.addEventListener('click',function(e){
     case 'tent':
       mutateHike(hid,function(h){
         h.tent=!h.tent;
-        if(h.tent&&h.track){h.nights=h.nights||suggestNights(h.track);h.camps=findCamps(h.track,h.nights)}else h.camps=[];
-      },['tent','nights','camps']);break;
+        if(h.tent)applyPlan(h);else h.camps=[];
+      },['tent','days','nights','camps']);break;
     case 'camp-suggest':
-      mutateHike(hid,function(h){h.nights=h.nights||suggestNights(h.track);h.camps=findCamps(h.track,h.nights)},['nights','camps']);
+      mutateHike(hid,function(h){applyPlan(h)},['days','nights','camps']);
       toast('Bivouacs recalculés.');break;
-    case 'camp-gpx':
-      var hh=state.hikes[hid];if(!hh||!(hh.camps||[]).length)break;
-      var url=URL.createObjectURL(new Blob([campsGpx(hh)],{type:'application/gpx+xml'})),an=document.createElement('a');
-      an.href=url;an.download=(hh.name||'rando').replace(/[^\w-]+/g,'-')+'-bivouacs.gpx';document.body.appendChild(an);an.click();an.remove();
-      setTimeout(function(){URL.revokeObjectURL(url)},3000);break;
+    case 'camp-gpx':{var hh=state.hikes[hid];if(!hh||!(hh.camps||[]).length)break;exportGpx(hh);break}
     case 'gear-new':gearSheet(null,null);break;
     case 'gear-edit':gearSheet(id,null);break;
     case 'seed':seedGear();break;
@@ -1311,7 +1377,8 @@ document.addEventListener('change',function(e){
   if(!t.dataset||!t.dataset.act)return;
   if(t.dataset.act==='pack'){var v=t.checked;mutateHike(hid,function(h){h.items.forEach(function(i){if(i.id===t.dataset.id)i.packed=v})},['items'])}
   if(t.dataset.act==='join-bag'){var jbb=state.bags[t.value];if(jbb){var set={};(jbb.items||[]).forEach(function(i){set[i.gid]=1});document.querySelectorAll('#j-list input[type=checkbox]').forEach(function(c){c.checked=!!set[c.value]})}return}
-  if(t.dataset.act==='nights'){var nv=parseInt(t.value,10);mutateHike(hid,function(h){h.nights=nv;h.camps=findCamps(h.track,nv)},['nights','camps'])}
+  if(t.dataset.act==='days'){var nv=parseFloat(t.value);mutateHike(hid,function(h){h.days=nv;applyPlan(h)},['days','nights','camps'])}
+  if(t.dataset.act==='start'){var sv=t.value||'08:00';mutateHike(hid,function(h){h.startTime=sv;applyPlan(h)},['startTime','days','nights','camps'])}
   if(t.dataset.act==='who'){var w=t.value;mutateHike(hid,function(h){h.items.forEach(function(i){if(i.id===t.dataset.id)i.who=w})},['items'])}
 });
 document.addEventListener('input',function(e){
@@ -1423,9 +1490,10 @@ function importGpx(input){
     var r=parseGpx(txt);
     mutateHike(hid,function(h){
       h.stats=r.stats;h.profile=r.profile;h.route=r.route;h.track=r.track;
-      if(h.tent){h.nights=h.nights||suggestNights(r.track);h.camps=findCamps(r.track,h.nights)}else h.camps=[];
       if(r.date)h.date=r.date;
-    },['stats','profile','route','track','camps','nights','date']);
+      h.days=null;h.nights=null;
+      if(h.tent)applyPlan(h);else h.camps=[];
+    },['stats','profile','route','track','camps','nights','days','date']);
     toast('Trace importée : '+fmt(r.stats.km,1)+' km'+(r.stats.up!=null?', D+ '+fmt(r.stats.up,0)+' m':'')+'.');
   }).catch(function(err){toast(err&&err.message?err.message:'Ce fichier n\'a pas pu être lu.')});
   input.value='';
