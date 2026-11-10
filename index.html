@@ -243,6 +243,11 @@ button.plate:hover{transform:scale(1.02)}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @media (max-width:420px){.plate .big{font-size:56px}h1{font-size:34px}}
 @media (min-width:768px){.shell{max-width:760px}.plates{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
+/* iPhone : les champs date/heure ont une largeur propre qui faisait déborder la grille */
+.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.two>*,label.f{min-width:0}
+input[type=date],input[type=time]{display:block;width:100%;min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;text-align:left;line-height:1.2}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0;min-height:1.2em}
 /* repli des sections, barre de saut, photos, impression */
 .fold{display:inline-flex;align-items:center;gap:8px;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;letter-spacing:inherit}
 .fold svg{width:20px;height:20px;fill:none;stroke:var(--mute);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s var(--ease)}
